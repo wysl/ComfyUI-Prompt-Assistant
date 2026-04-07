@@ -5,6 +5,7 @@
 
 import { app } from "../../../../scripts/app.js";
 import { logger } from '../utils/logger.js';
+import { tUI, localizeElement, observeLocalizedMutations } from "../utils/uiI18n.js";
 
 // ---动态 Z-Index 计算---
 /**
@@ -50,8 +51,8 @@ export function createSettingsDialog(options) {
             onCancel = null,
             onClose = null,  // 关闭回调（无论保存还是取消都会调用）
             isConfirmDialog = false,
-            saveButtonText = '保存',
-            cancelButtonText = '取消',
+            saveButtonText = tUI('保存'),
+            cancelButtonText = tUI('取消'),
             saveButtonIcon = 'pi-check',
             isDangerButton = false,  // 是否为危险按钮
             dialogClassName = null,
@@ -91,7 +92,12 @@ export function createSettingsDialog(options) {
         let isFormModified = false;
 
         // 内部关闭函数：关闭弹窗并调用 onClose 回调
+        let stopContentLocalization = null;
         const closeDialog = () => {
+            if (stopContentLocalization) {
+                stopContentLocalization();
+                stopContentLocalization = null;
+            }
             closeModalWithAnimation(modal, overlay);
             // 在动画完成后调用 onClose 回调
             if (onClose) {
@@ -111,7 +117,7 @@ export function createSettingsDialog(options) {
                 } catch (error) {
                     app.extensionManager.toast.add({
                         severity: "error",
-                        summary: "保存失败",
+                        summary: tUI("保存失败"),
                         detail: error.message,
                         life: 3000
                     });
@@ -124,17 +130,17 @@ export function createSettingsDialog(options) {
             if (isFormModified && !isConfirmDialog && !onCancel) {
                 // 创建确认对话框
                 createSettingsDialog({
-                    title: '确认操作',
+                    title: tUI('确认操作'),
                     isConfirmDialog: true,
-                    saveButtonText: '返回',
+                    saveButtonText: tUI('返回'),
                     saveButtonIcon: 'pi-undo',
-                    cancelButtonText: '关闭',
+                    cancelButtonText: tUI('关闭'),
                     renderContent: (content) => {
                         content.style.textAlign = 'center';
                         content.style.padding = '1rem';
 
                         const confirmMessage = document.createElement('p');
-                        confirmMessage.textContent = '配置已修改，是否保存？';
+                        confirmMessage.textContent = tUI('配置已修改，是否保存？');
                         confirmMessage.style.margin = '0';
                         confirmMessage.style.fontSize = '1rem';
 
@@ -177,7 +183,7 @@ export function createSettingsDialog(options) {
 
         const closeButton = document.createElement('button');
         closeButton.className = 'p-dialog-header-icon p-dialog-header-close p-link';
-        closeButton.setAttribute('aria-label', '关闭');
+        closeButton.setAttribute('aria-label', tUI('关闭'));
         closeButton.innerHTML = '<span class="pi pi-times"></span>';
         closeButton.onclick = () => {
             handleCloseModal(false);
@@ -248,6 +254,12 @@ export function createSettingsDialog(options) {
 
         // 渲染内容并跟踪变化
         renderContent(content, header);
+        localizeElement(header);
+        if (noticeArea) {
+            localizeElement(noticeArea);
+        }
+        localizeElement(content);
+        stopContentLocalization = observeLocalizedMutations(modal);
 
         // 如果不是确认对话框且内容中有表单，添加变更跟踪
         if (!isConfirmDialog) {
@@ -275,7 +287,7 @@ export function createSettingsDialog(options) {
                 if (onCancel) {
                     onCancel();
                 }
-                closeModalWithAnimation(modal, overlay);
+                closeDialog();
             };
         } else {
             cancelButton.onclick = () => {
@@ -299,18 +311,18 @@ export function createSettingsDialog(options) {
                     // 如果onSave返回Promise，等待其完成
                     if (result instanceof Promise) {
                         result.then(() => {
-                            closeModalWithAnimation(modal, overlay);
+                            closeDialog();
                         }).catch(error => {
                             logger.error(`确认对话框处理失败: ${error.message}`);
-                            closeModalWithAnimation(modal, overlay);
+                            closeDialog();
                         });
                     } else {
                         // 普通返回值，直接关闭
-                        closeModalWithAnimation(modal, overlay);
+                        closeDialog();
                     }
                 } catch (error) {
                     logger.error(`确认对话框处理失败: ${error.message}`);
-                    closeModalWithAnimation(modal, overlay);
+                    closeDialog();
                 }
             } else {
                 handleCloseModal(true);
@@ -420,8 +432,8 @@ export function createSettingsDialog(options) {
         logger.error(`创建设置弹窗失败: ${error.message}`);
         app.extensionManager.toast.add({
             severity: "error",
-            summary: "创建弹窗失败",
-            detail: error.message || "创建设置弹窗过程中发生错误",
+            summary: tUI("创建弹窗失败"),
+            detail: error.message || tUI("创建设置弹窗过程中发生错误"),
             life: 3000
         });
     }
@@ -475,7 +487,7 @@ export function createFormGroup(title, links = [], options = {}) {
 
     const titleElem = document.createElement('h3');
     titleElem.className = 'settings-form-section-title';
-    titleElem.textContent = title;
+    titleElem.textContent = tUI(title, title);
     titleElem.style.margin = '0';
 
     const linksContainer = document.createElement('div');
@@ -491,7 +503,7 @@ export function createFormGroup(title, links = [], options = {}) {
         if (prefixText) {
             const prefix = document.createElement('span');
             prefix.className = 'settings-service-prefix';
-            prefix.textContent = prefixText;
+            prefix.textContent = tUI(prefixText, prefixText);
             serviceLinksContainer.appendChild(prefix);
         }
 
@@ -507,7 +519,7 @@ export function createFormGroup(title, links = [], options = {}) {
             const link = document.createElement('a');
             link.href = linkInfo.url;
             link.target = '_blank';
-            link.textContent = linkInfo.text;
+            link.textContent = tUI(linkInfo.text, linkInfo.text);
             link.className = 'settings-service-link';
 
             serviceLinksContainer.appendChild(link);
@@ -547,7 +559,7 @@ export function createInputGroup(label, placeholder, type = 'text') {
 
     // 创建浮动标签
     const floatLabel = document.createElement('label');
-    floatLabel.textContent = label;
+    floatLabel.textContent = tUI(label, label);
 
     // 组装结构: input 在前, label 在后 (使用 ~ 选择器)
     floatContainer.appendChild(input);
@@ -661,7 +673,7 @@ export function createSelectGroup(label, options, initialValue = null, config = 
         dropdownList.innerHTML = '';
 
         if (!newOptions || newOptions.length === 0) {
-            dropdownLabel.textContent = '暂无选项';
+            dropdownLabel.textContent = tUI('暂无选项');
             return;
         }
 
@@ -669,12 +681,12 @@ export function createSelectGroup(label, options, initialValue = null, config = 
         newOptions.forEach(opt => {
             const optionEl = document.createElement('option');
             optionEl.value = opt.value;
-            optionEl.textContent = opt.text;
+            optionEl.textContent = tUI(opt.text, opt.text);
             select.appendChild(optionEl);
 
             const itemEl = document.createElement('li');
             itemEl.className = 'p-dropdown-item';
-            itemEl.textContent = opt.text;
+            itemEl.textContent = tUI(opt.text, opt.text);
             itemEl.dataset.value = opt.value;
             itemEl.setAttribute('role', 'option');
 
@@ -685,7 +697,7 @@ export function createSelectGroup(label, options, initialValue = null, config = 
                 itemEl.classList.add('p-highlight');
 
                 select.value = opt.value;
-                dropdownLabel.textContent = opt.text;
+                dropdownLabel.textContent = tUI(opt.text, opt.text);
                 closePanel();
                 select.dispatchEvent(new Event('change', { bubbles: true }));
             });
@@ -703,7 +715,7 @@ export function createSelectGroup(label, options, initialValue = null, config = 
         if (valToSet !== null) {
             const selectedOption = newOptions.find(o => o.value === valToSet);
             if (selectedOption) {
-                dropdownLabel.textContent = selectedOption.text;
+                dropdownLabel.textContent = tUI(selectedOption.text, selectedOption.text);
                 select.value = selectedOption.value;
                 // 设置高亮
                 const initialItem = dropdownList.querySelector(`.p-dropdown-item[data-value="${valToSet}"]`);
@@ -729,7 +741,7 @@ export function createSelectGroup(label, options, initialValue = null, config = 
     if (showLabel) {
         // 创建浮动标签
         const floatLabel = document.createElement('label');
-        floatLabel.textContent = label;
+        floatLabel.textContent = tUI(label, label);
 
         // 组装浮动标签结构: dropdown 在前, label 在后
         floatContainer.appendChild(dropdownContainer);
@@ -828,7 +840,7 @@ export function createSelectGroup(label, options, initialValue = null, config = 
     select.addEventListener('change', () => {
         const selectedOption = options.find(o => o.value === select.value);
         if (selectedOption) {
-            dropdownLabel.textContent = selectedOption.text;
+            dropdownLabel.textContent = tUI(selectedOption.text, selectedOption.text);
             // Update highlight
             dropdownList.querySelectorAll('.p-dropdown-item').forEach(el => {
                 if (el.dataset.value === select.value) {
@@ -858,7 +870,7 @@ export function createSelectGroup(label, options, initialValue = null, config = 
 export function createComboBoxGroup(label, options = [], initialValue = '', config = {}) {
     const {
         placeholder = '',
-        emptyText = '暂无选项',
+        emptyText = tUI('暂无选项'),
         showLabel = true
     } = config;
 
@@ -910,7 +922,7 @@ export function createComboBoxGroup(label, options = [], initialValue = '', conf
             // 显示空状态提示
             const emptyItem = document.createElement('li');
             emptyItem.className = 'p-dropdown-item pa-combobox-empty';
-            emptyItem.textContent = emptyText;
+            emptyItem.textContent = tUI(emptyText, emptyText);
             emptyItem.style.color = 'var(--p-text-muted-color)';
             emptyItem.style.fontStyle = 'italic';
             emptyItem.style.pointerEvents = 'none';
@@ -921,7 +933,7 @@ export function createComboBoxGroup(label, options = [], initialValue = '', conf
         optionsList.forEach(opt => {
             const itemEl = document.createElement('li');
             itemEl.className = 'p-dropdown-item';
-            itemEl.textContent = opt.text;
+            itemEl.textContent = tUI(opt.text, opt.text);
             itemEl.dataset.value = opt.value;
             itemEl.setAttribute('role', 'option');
 
@@ -962,7 +974,7 @@ export function createComboBoxGroup(label, options = [], initialValue = '', conf
     // ---根据 showLabel 决定是否创建浮动标签---
     if (showLabel) {
         const floatLabel = document.createElement('label');
-        floatLabel.textContent = label;
+        floatLabel.textContent = tUI(label, label);
         floatContainer.appendChild(comboContainer);
         floatContainer.appendChild(floatLabel);
     } else {
@@ -1116,7 +1128,7 @@ export function createHorizontalFormGroup(items) {
 
         const label = document.createElement('label');
         label.className = 'settings-form-label';
-        label.textContent = item.label;
+        label.textContent = tUI(item.label, item.label);
 
         container.appendChild(label);
         container.appendChild(item.element);
@@ -1153,7 +1165,7 @@ export function createTextareaGroup(label, placeholder, rows = 8) {
 
     // 创建浮动标签
     const floatLabel = document.createElement('label');
-    floatLabel.textContent = label;
+    floatLabel.textContent = tUI(label, label);
 
     // 组装结构: textarea 在前, label 在后 (使用 ~ 选择器)
     floatContainer.appendChild(textarea);
@@ -1181,13 +1193,13 @@ export function createSwitchControl(label, description, defaultChecked, onChange
 
     const labelEl = document.createElement('div');
     labelEl.className = 'switch-control-label';
-    labelEl.textContent = label;
+    labelEl.textContent = tUI(label, label);
     textContainer.appendChild(labelEl);
 
     if (description) {
         const descEl = document.createElement('div');
         descEl.className = 'switch-control-desc';
-        descEl.textContent = description;
+        descEl.textContent = tUI(description, description);
         textContainer.appendChild(descEl);
     }
 
@@ -1240,7 +1252,7 @@ export function createLoadingButton(text, onClick, showSuccessToast = true) {
     const button = document.createElement('button');
     button.className = 'p-button p-component p-button-primary';
     button.style.width = '208px'; // 相当于w-52
-    button.innerHTML = `<span class="p-button-label">${text}</span>`;
+    button.innerHTML = `<span class="p-button-label">${tUI(text, text)}</span>`;
 
     button.addEventListener('click', async () => {
         if (button.disabled) return;
@@ -1256,7 +1268,7 @@ export function createLoadingButton(text, onClick, showSuccessToast = true) {
             if (showSuccessToast) {
                 app.extensionManager.toast.add({
                     severity: "success",
-                    summary: "清理已清理完成",
+                    summary: tUI("清理已清理完成"),
                     life: 3000
                 });
             }
@@ -1265,8 +1277,8 @@ export function createLoadingButton(text, onClick, showSuccessToast = true) {
             // 显示错误提示
             app.extensionManager.toast.add({
                 severity: "error",
-                summary: "操作失败",
-                detail: error.message || "操作过程中发生错误",
+                summary: tUI("操作失败"),
+                detail: error.message || tUI("操作过程中发生错误"),
                 life: 3000
             });
             logger.error(`按钮操作失败: ${error.message}`);
@@ -1305,8 +1317,8 @@ export function createConfirmPopup(options) {
         renderFormContent = null,
         onConfirm,
         onCancel = null,
-        confirmLabel = '确认',
-        cancelLabel = '取消',
+        confirmLabel = tUI('确认'),
+        cancelLabel = tUI('取消'),
         position = 'bottom',
         autoPosition = true,
         singleButton = false,
@@ -1333,7 +1345,7 @@ export function createConfirmPopup(options) {
     messageContainer.appendChild(iconElement);
 
     const messageText = document.createElement('span');
-    messageText.textContent = message;
+    messageText.textContent = tUI(message, message);
     messageContainer.appendChild(messageText);
 
     content.appendChild(messageContainer);
@@ -1365,7 +1377,7 @@ export function createConfirmPopup(options) {
         confirmButton.className = confirmDanger
             ? 'p-button p-component p-button-sm p-button-danger'
             : 'p-button p-component p-button-sm';
-        confirmButton.innerHTML = `<span class="p-button-icon-left pi pi-check"></span><span class="p-button-label">${confirmLabel}</span>`;
+        confirmButton.innerHTML = `<span class="p-button-icon-left pi pi-check"></span><span class="p-button-label">${tUI(confirmLabel, confirmLabel)}</span>`;
         confirmButton.onclick = async () => {
             try {
                 if (onConfirm) {
@@ -1382,7 +1394,7 @@ export function createConfirmPopup(options) {
         // 双按钮模式：显示取消和确认按钮
         const cancelButton = document.createElement('button');
         cancelButton.className = 'p-button p-component p-button-secondary p-button-sm';
-        cancelButton.innerHTML = `<span class="p-button-icon-left pi pi-times"></span><span class="p-button-label">${cancelLabel}</span>`;
+        cancelButton.innerHTML = `<span class="p-button-icon-left pi pi-times"></span><span class="p-button-label">${tUI(cancelLabel, cancelLabel)}</span>`;
         cancelButton.onclick = () => {
             if (onCancel) {
                 onCancel();
@@ -1394,7 +1406,7 @@ export function createConfirmPopup(options) {
         confirmButton.className = confirmDanger
             ? 'p-button p-component p-button-sm p-button-danger'
             : 'p-button p-component p-button-sm';
-        confirmButton.innerHTML = `<span class="p-button-icon-left pi pi-check"></span><span class="p-button-label">${confirmLabel}</span>`;
+        confirmButton.innerHTML = `<span class="p-button-icon-left pi pi-check"></span><span class="p-button-label">${tUI(confirmLabel, confirmLabel)}</span>`;
         confirmButton.onclick = async () => {
             try {
                 // 将表单容器传递给 onConfirm 回调
@@ -1418,8 +1430,11 @@ export function createConfirmPopup(options) {
     popup.appendChild(arrow);
     popup.appendChild(content);
 
+    const stopPopupLocalization = observeLocalizedMutations(popup);
+
     // 关闭气泡框的函数
     const closePopup = () => {
+        stopPopupLocalization();
         popup.classList.add('pa-confirm-popup-hide');
         setTimeout(() => {
             if (popup.parentNode) {
@@ -1573,6 +1588,7 @@ export function createConfirmPopup(options) {
 
     // 将气泡框添加到 body
     document.body.appendChild(popup);
+    localizeElement(popup);
 
     // 定位气泡框
     requestAnimationFrame(() => {
@@ -1680,7 +1696,7 @@ export function showContextMenu(options) {
 
             const label = document.createElement('span');
             label.className = 'pa-context-menu-item-label';
-            label.textContent = item.label;
+            label.textContent = tUI(item.label, item.label);
             menuItemContent.appendChild(label);
 
             menuItem.appendChild(menuItemContent);
@@ -1798,7 +1814,7 @@ export function createTooltip(options) {
     const createTooltipElement = () => {
         tooltip = document.createElement('div');
         tooltip.className = 'pa-tooltip';
-        tooltip.textContent = content;
+        tooltip.textContent = tUI(content, content);
 
         // 创建箭头
         const arrow = document.createElement('div');
@@ -1929,7 +1945,7 @@ export function createTooltip(options) {
 export function createMultiSelectListbox(options) {
     const {
         triggerElement,
-        placeholder = '搜索...',
+        placeholder = tUI('搜索...'),
         fetchItems,
         onConfirm,
         onCancel = null
@@ -1951,7 +1967,7 @@ export function createMultiSelectListbox(options) {
 
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
-    searchInput.placeholder = placeholder;
+    searchInput.placeholder = tUI(placeholder, placeholder);
     searchInput.className = 'pa-multi-listbox-search-input';
 
     const searchIcon = document.createElement('i');
@@ -1973,18 +1989,18 @@ export function createMultiSelectListbox(options) {
 
     const countLabel = document.createElement('span');
     countLabel.className = 'pa-multi-listbox-count';
-    countLabel.textContent = '已选 0 项';
+    countLabel.textContent = tUI('已选 0 项');
 
     const actions = document.createElement('div');
     actions.className = 'pa-multi-listbox-actions';
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'p-button p-component p-button-secondary p-button-sm';
-    cancelBtn.innerHTML = '<span class="p-button-icon-left pi pi-times"></span><span class="p-button-label">取消</span>';
+    cancelBtn.innerHTML = `<span class="p-button-icon-left pi pi-times"></span><span class="p-button-label">${tUI('取消')}</span>`;
 
     const confirmBtn = document.createElement('button');
     confirmBtn.className = 'p-button p-component p-button-sm';
-    confirmBtn.innerHTML = '<span class="p-button-icon-left pi pi-check"></span><span class="p-button-label">确定</span>';
+    confirmBtn.innerHTML = `<span class="p-button-icon-left pi pi-check"></span><span class="p-button-label">${tUI('确定')}</span>`;
     confirmBtn.disabled = true;
 
     actions.appendChild(cancelBtn);
@@ -2003,7 +2019,7 @@ export function createMultiSelectListbox(options) {
         listContainer.innerHTML = `
             <div class="loading-container">
                 <div class="loading-spinner"></div>
-                <div class="loading-text">加载中...</div>
+                <div class="loading-text">${tUI('加载中...')}</div>
             </div>
         `;
     };
@@ -2013,9 +2029,9 @@ export function createMultiSelectListbox(options) {
         listContainer.innerHTML = `
             <div style="text-align: center; padding: 40px 20px;">
                 <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                <div style="font-size: 14px; color: var(--p-text-color); margin-bottom: 8px;">加载失败</div>
+                <div style="font-size: 14px; color: var(--p-text-color); margin-bottom: 8px;">${tUI('加载失败')}</div>
                 <div style="font-size: 13px; color: var(--p-red-500);">${message}</div>
-                <div style="font-size: 12px; color: var(--p-text-muted-color); margin-top: 12px;">你仍然可以在搜索框中手动输入模型名称</div>
+                <div style="font-size: 12px; color: var(--p-text-muted-color); margin-top: 12px;">${tUI('你仍然可以在搜索框中手动输入模型名称')}</div>
             </div>
         `;
         // 不禁用搜索框,允许用户手动输入模型名称
@@ -2023,7 +2039,7 @@ export function createMultiSelectListbox(options) {
 
     // 更新选中计数
     const updateCount = () => {
-        countLabel.textContent = `已选 ${selectedItems.size} 项`;
+        countLabel.textContent = `${tUI('已选')} ${selectedItems.size} ${tUI('项')}`;
         // 如果有选中项或搜索框有内容,则启用确认按钮
         const hasInput = searchInput.value.trim().length > 0;
         confirmBtn.disabled = selectedItems.size === 0 && !hasInput;
@@ -2040,7 +2056,7 @@ export function createMultiSelectListbox(options) {
         if (filteredItems.length === 0) {
             const emptyHint = document.createElement('div');
             emptyHint.className = 'pa-multi-listbox-empty';
-            emptyHint.textContent = searchTerm ? '未找到匹配项' : '暂无可用项';
+            emptyHint.textContent = searchTerm ? tUI('未找到匹配项') : tUI('暂无可用项');
             listContainer.appendChild(emptyHint);
             return;
         }
@@ -2083,12 +2099,12 @@ export function createMultiSelectListbox(options) {
         try {
             const items = await fetchItems();
             if (!items || !Array.isArray(items)) {
-                throw new Error('数据格式错误');
+                throw new Error(tUI('数据格式错误'));
             }
             allItems = items;
             renderList();
         } catch (error) {
-            showError(error.message || '未知错误');
+            showError(error.message || tUI('未知错误'));
         }
     };
 
@@ -2127,6 +2143,8 @@ export function createMultiSelectListbox(options) {
 
     overlay.appendChild(listbox);
     document.body.appendChild(overlay);
+    localizeElement(listbox);
+    const stopListboxLocalization = observeLocalizedMutations(listbox);
 
     // 计算并设置位置（右对齐按钮，自适应上下）
     const viewportHeight = window.innerHeight;
@@ -2148,6 +2166,7 @@ export function createMultiSelectListbox(options) {
 
     // 关闭函数
     const close = () => {
+        stopListboxLocalization();
         if (overlay.parentNode) {
             document.body.removeChild(overlay);
         }
@@ -2212,7 +2231,7 @@ export function createSplitButton(options) {
         }
         const span = document.createElement('span');
         span.className = 'p-button-label';
-        span.textContent = text;
+        span.textContent = tUI(text, text);
         mainContent.appendChild(span);
 
         // 更新 stored data for subsequent updates via updateIcon
@@ -2289,7 +2308,7 @@ export function createSplitButton(options) {
 
         itemContent.innerHTML = `
             ${iconHtml}
-            <span class="pa-context-menu-item-label">${item.label}</span>
+            <span class="pa-context-menu-item-label">${tUI(item.label, item.label)}</span>
             ${hasSubmenu ? '<span class="pa-context-menu-submenu-icon pi pi-chevron-right"></span>' : ''}
         `;
 
@@ -2539,7 +2558,7 @@ export function createSelectButtonGroup(label, options, initialValue, config = {
     if (label) {
         const labelEl = document.createElement('label');
         labelEl.className = 'pa-form-label';
-        labelEl.textContent = label;
+        labelEl.textContent = tUI(label, label);
         group.appendChild(labelEl);
     }
 
@@ -2586,7 +2605,7 @@ export function createSelectButtonGroup(label, options, initialValue, config = {
             if (option.label) {
                 const labelSpan = document.createElement('span');
                 labelSpan.className = 'pa-select-button-label';
-                labelSpan.textContent = option.label;
+                labelSpan.textContent = tUI(option.label, option.label);
                 button.appendChild(labelSpan);
             }
 

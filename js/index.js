@@ -70,7 +70,7 @@ app.registerExtension({
             });
 
             // 注册设置选项
-            registerSettings();
+            await registerSettings();
 
             // 初始化自动翻译拦截器（独立于提示词小助手）
 

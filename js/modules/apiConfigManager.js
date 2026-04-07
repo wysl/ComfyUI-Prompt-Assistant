@@ -18,6 +18,7 @@ import {
     createMultiSelectListbox
 } from "./uiComponents.js";
 import { APIService } from "../services/api.js";
+import { tUI } from "../utils/uiI18n.js";
 
 // Sortable库已通过script标签加载，直接使用全局变量
 
@@ -51,14 +52,14 @@ class APIConfigManager {
             logger.debug('打开API配置弹窗 v2.0');
 
             createSettingsDialog({
-                title: '<i class="pi pi-cog" style="margin-right: 8px;"></i>API管理器',
+                title: `<i class="pi pi-cog" style="margin-right: 8px;"></i>${tUI('API管理器')}`,
                 dialogClassName: 'api-config-dialog-v2',
                 disableBackdropAndCloseOnClickOutside: true,
                 hideFooter: true,  // 不显示底部的保存/取消按钮
                 renderNotice: (noticeArea) => {
                     const subtitle = document.createElement('div');
                     subtitle.className = 'api-config-warning';
-                    subtitle.textContent = '*免责声明：本插件仅提供 API 调用工具，第三方服务责任与本插件无关，插件所涉用户配置信息均存储于本地。对于因账号使用产生的任何问题，本插件不承担责任！';
+                    subtitle.textContent = `*${tUI('免责声明：本插件仅提供 API 调用工具，第三方服务责任与本插件无关，插件所涉用户配置信息均存储于本地。对于因账号使用产生的任何问题，本插件不承担责任！')}`;
                     noticeArea.appendChild(subtitle);
                 },
                 renderContent: async (container) => {
@@ -224,7 +225,7 @@ class APIConfigManager {
         header.className = 'tab-header';
 
         // 百度翻译标签
-        const baiduTab = this._createTabButton('baidu', '百度翻译', '机器翻译');
+        const baiduTab = this._createTabButton('baidu', tUI('百度翻译'), tUI('机器翻译'));
         header.appendChild(baiduTab);
 
         // 动态创建服务商标签
@@ -479,7 +480,7 @@ class APIConfigManager {
                     app.extensionManager.toast.add({
                         severity: "success",
                         summary: "服务商信息已更新",
-                        detail: `${newName} 更新成功`,
+                        detail: `${newName} ${tUI('更新成功')}`,
                         life: 2000
                     });
                 } catch (error) {
@@ -532,7 +533,7 @@ class APIConfigManager {
             renderFormContent: (formContainer) => {
                 // 服务商名称输入框
                 const nameInput = createInputGroup('服务商名称', '请输入服务商名称');
-                nameInput.input.value = '新服务商';
+                nameInput.input.value = tUI('新服务商');
                 nameInput.input.dataset.fieldName = 'serviceName';
                 formContainer.appendChild(nameInput.group);
 
@@ -578,7 +579,7 @@ class APIConfigManager {
                         app.extensionManager.toast.add({
                             severity: "success",
                             summary: "新服务商已创建",
-                            detail: `${serviceName} 创建成功`,
+                            detail: `${serviceName} ${tUI('创建成功')}`,
                             life: 3000
                         });
 
@@ -834,7 +835,7 @@ class APIConfigManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     type: 'openai_compatible',
-                    name: '新服务商',
+                    name: tUI('新服务商'),
                     description: '',
                     base_url: 'https://api.example.com/v1',
                     api_key: ''
@@ -847,7 +848,7 @@ class APIConfigManager {
                 app.extensionManager.toast.add({
                     severity: "success",
                     summary: "新服务商已创建",
-                    detail: "请填写配置信息",
+                    detail: tUI("请填写配置信息"),
                     life: 3000
                 });
 
@@ -867,7 +868,7 @@ class APIConfigManager {
                     contentContainer.appendChild(newContentPane);
 
                     // 移除空状态提示（如果有）
-                    const emptyHint = contentContainer.querySelector('div[style*="暂无服务商"]');
+                    const emptyHint = contentContainer.querySelector('.empty-state-hint');
                     if (emptyHint) {
                         emptyHint.remove();
                     }
@@ -923,7 +924,7 @@ class APIConfigManager {
 
         // 服务商标题 - 根据服务名称检测是否需要添加外部链接
         const titleText = service.name || service.id;
-        const descText = service.description ? ` 信息配置` : '';
+        const descText = service.description ? ` ${tUI('信息配置')}` : '';
         const fullTitle = `1️⃣ ${titleText}${descText}`;
 
         // 检测服务名称,添加对应的申请链接
@@ -1284,13 +1285,15 @@ class APIConfigManager {
 
         const title = document.createElement('h5');
         title.className = 'settings-form-section-title';
-        title.textContent = modelType === 'llm' ? '2️⃣ 添加翻译、提示词优化的大语言模型 (LLM)' : '3️⃣ 添加图像、视频反推的视觉模型 (VLM)';
+        title.textContent = modelType === 'llm'
+            ? tUI('2️⃣ 添加翻译、提示词优化的大语言模型 (LLM)')
+            : tUI('3️⃣ 添加图像、视频反推的视觉模型 (VLM)');
         title.style.margin = '0';
 
         // 添加模型按钮
         const addButton = document.createElement('button');
         addButton.className = 'p-button p-component p-button-sm';
-        addButton.innerHTML = '<span class="p-button-icon-left pi pi-plus"></span><span class="p-button-label">添加模型</span>';
+        addButton.innerHTML = `<span class="p-button-icon-left pi pi-plus"></span><span class="p-button-label">${tUI('添加模型')}</span>`;
         addButton.addEventListener('click', () => this._showAddModelDialog(service, modelType, modelsContainer));
 
         titleRow.appendChild(title);
@@ -1324,7 +1327,7 @@ class APIConfigManager {
         } else {
             const emptyHint = document.createElement('div');
             emptyHint.className = 'empty-hint';
-            emptyHint.textContent = '暂无配置模型，点击"+ 添加模型"开始配置';
+            emptyHint.textContent = tUI('暂无配置模型，点击"+ 添加模型"开始配置');
             emptyHint.style.cssText = `
                 font-size: 12px;
                 color: var(--p-text-muted-color);
@@ -1364,7 +1367,7 @@ class APIConfigManager {
         if (model.is_default) {
             const defaultBadge = document.createElement('span');
             defaultBadge.className = 'model-tag-badge';
-            defaultBadge.textContent = '默认';
+            defaultBadge.textContent = tUI('默认');
             tag.appendChild(defaultBadge);
         }
 
@@ -1539,7 +1542,7 @@ class APIConfigManager {
                     app.extensionManager.toast.add({
                         severity: "success",
                         summary: "参数已更新",
-                        detail: `${modelName} 的参数已保存`,
+                        detail: `${modelName} ${tUI('的参数已保存')}`,
                         life: 2000
                     });
                 } catch (error) {
@@ -1639,7 +1642,7 @@ class APIConfigManager {
         // 使用新的多选listbox组件
         createMultiSelectListbox({
             triggerElement: addBtn,
-            placeholder: `搜索${modelType === 'llm' ? 'LLM' : 'VLM'}模型...`,
+            placeholder: `${tUI('搜索')}${modelType === 'llm' ? 'LLM' : 'VLM'}${tUI('模型...')}`,
             fetchItems: async () => {
                 const result = await this._getAvailableModels(service, modelType);
 
@@ -1767,19 +1770,19 @@ class APIConfigManager {
     async _deleteModel(service, modelType, modelName, tagElement) {
         // 使用createSettingsDialog创建确认窗口
         createSettingsDialog({
-            title: '<i class="pi pi-exclamation-triangle" style="margin-right: 8px; color: var(--p-orange-500);"></i>确认删除',
+            title: `<i class="pi pi-exclamation-triangle" style="margin-right: 8px; color: var(--p-orange-500);"></i>${tUI('确认删除')}`,
             isConfirmDialog: true,
             dialogClassName: 'confirm-dialog',
-            saveButtonText: '删除',
+            saveButtonText: tUI('删除'),
             saveButtonIcon: 'pi-trash',
             isDangerButton: true,
-            cancelButtonText: '取消',
+            cancelButtonText: tUI('取消'),
             renderContent: (content) => {
                 content.className = 'confirm-dialog-content-simple';
 
                 const confirmMessage = document.createElement('p');
                 confirmMessage.className = 'confirm-dialog-message-simple';
-                confirmMessage.textContent = `确定要删除模型"${modelName}"吗？`;
+                confirmMessage.textContent = `${tUI('确定要删除模型')} "${modelName}" ${tUI('吗？')}`;
 
                 content.appendChild(confirmMessage);
             },
@@ -1811,7 +1814,7 @@ class APIConfigManager {
                     if (container && container.children.length === 0) {
                         const emptyHint = document.createElement('div');
                         emptyHint.className = 'empty-hint';
-                        emptyHint.textContent = '暂无配置模型，点击"+ 添加模型"开始配置';
+                        emptyHint.textContent = tUI('暂无配置模型，点击"+ 添加模型"开始配置');
                         emptyHint.style.cssText = `
                             font-size: 12px;
                             color: var(--p-text-muted-color);
@@ -1890,7 +1893,7 @@ class APIConfigManager {
                     if (nameSpan) {
                         const defaultBadge = document.createElement('span');
                         defaultBadge.className = 'model-tag-badge';
-                        defaultBadge.textContent = '默认';
+                        defaultBadge.textContent = tUI('默认');
                         nameSpan.after(defaultBadge);
                     }
                 }
@@ -1898,7 +1901,7 @@ class APIConfigManager {
 
             app.extensionManager.toast.add({
                 severity: "success",
-                summary: `已设置"${modelName}"为默认模型`,
+                summary: `${tUI('已设置')} "${modelName}" ${tUI('为默认模型')}`,
                 life: 2000
             });
 
@@ -1964,19 +1967,19 @@ class APIConfigManager {
 
         // 使用createSettingsDialog创建确认窗口
         createSettingsDialog({
-            title: '<i class="pi pi-exclamation-triangle" style="margin-right: 8px; color: var(--p-orange-500);"></i>确认删除',
+            title: `<i class="pi pi-exclamation-triangle" style="margin-right: 8px; color: var(--p-orange-500);"></i>${tUI('确认删除')}`,
             isConfirmDialog: true,
             dialogClassName: 'confirm-dialog',
-            saveButtonText: '删除',
+            saveButtonText: tUI('删除'),
             saveButtonIcon: 'pi-trash',
             isDangerButton: true,
-            cancelButtonText: '取消',
+            cancelButtonText: tUI('取消'),
             renderContent: (content) => {
                 content.className = 'confirm-dialog-content-simple';
 
                 const confirmMessage = document.createElement('p');
                 confirmMessage.className = 'confirm-dialog-message-simple';
-                confirmMessage.textContent = `确定要删除服务商"${serviceName}"吗？`;
+                confirmMessage.textContent = `${tUI('确定要删除服务商')} "${serviceName}" ${tUI('吗？')}`;
 
                 content.appendChild(confirmMessage);
             },
@@ -2025,7 +2028,7 @@ class APIConfigManager {
                                 padding: 40px;
                                 color: var(--p-text-muted-color);
                             `;
-                            emptyHint.textContent = '暂无服务商，点击"新增服务商"开始配置';
+                            emptyHint.textContent = tUI('暂无服务商，点击"新增服务商"开始配置');
                             listContainer.appendChild(emptyHint);
                         }
 

@@ -13,6 +13,15 @@ import { HistoryCacheService, TagCacheService, TranslateCacheService, CACHE_CONF
 import { UIToolkit } from "../utils/UIToolkit.js";
 import { FEATURES, handleFeatureChange } from "../services/features.js";
 import { APIService } from "../services/api.js";
+import {
+    UI_LANGUAGE_SETTING_ID,
+    getStoredUiLanguage,
+    persistUiLanguage,
+    ensureUiLocaleLoaded,
+    tUI,
+    patchToastLocalization,
+    syncGlobalUiLocalization
+} from "../utils/uiI18n.js";
 
 import { apiConfigManager } from "./apiConfigManager.js";
 import { rulesConfigManager } from "./rulesConfigManager.js";
@@ -29,24 +38,56 @@ import {
 // 标记是否是首次加载页面
 let isFirstLoad = true;
 
+function localizeSettingsPayload(payload) {
+    if (Array.isArray(payload)) {
+        return payload.map(item => localizeSettingsPayload(item));
+    }
+
+    if (!payload || typeof payload !== "object") {
+        return payload;
+    }
+
+    const localized = {};
+    for (const [key, value] of Object.entries(payload)) {
+        if (key === "category" && Array.isArray(value)) {
+            localized[key] = value.map(item => tUI(item, item));
+            continue;
+        }
+
+        if (["name", "tooltip", "text", "summary", "detail"].includes(key) && typeof value === "string") {
+            localized[key] = tUI(value, value);
+            continue;
+        }
+
+        if (typeof value === "function") {
+            localized[key] = value;
+            continue;
+        }
+
+        localized[key] = localizeSettingsPayload(value);
+    }
+
+    return localized;
+}
+
 // ---服务选择器配置---
 const SERVICE_TYPES = {
     translate: {
-        name: '翻译',
+        name: tUI('翻译'),
         configEndpoint: '/config/translate',
         serviceType: 'translate',
         filterKey: 'llm_models',
         includeBaidu: true
     },
     llm: {
-        name: '提示词优化',
+        name: tUI('提示词优化'),
         configEndpoint: '/config/llm',
         serviceType: 'llm',
         filterKey: 'llm_models',
         includeBaidu: false
     },
     vlm: {
-        name: '图像反推',
+        name: tUI('图像反推'),
         configEndpoint: '/config/vision',
         serviceType: 'vlm',
         filterKey: 'vlm_models',
@@ -150,7 +191,7 @@ const serviceSelector = {
 
         // 添加百度翻译选项（仅翻译类型）
         if (config.includeBaidu) {
-            options.push({ value: 'baidu', text: '百度翻译' });
+            options.push({ value: 'baidu', text: tUI('百度翻译') });
         }
 
         // 过滤并添加其他服务
@@ -259,8 +300,8 @@ function showAPIConfigModal() {
         logger.error(`打开API配置弹窗失败: ${error.message}`);
         app.extensionManager.toast.add({
             severity: "error",
-            summary: "打开配置失败",
-            detail: error.message || "打开配置弹窗过程中发生错误",
+            summary: tUI("打开配置失败"),
+            detail: error.message || tUI("打开配置弹窗过程中发生错误"),
             life: 3000
         });
     }
@@ -277,8 +318,8 @@ function showRulesConfigModal() {
         logger.error(`打开规则配置弹窗失败: ${error.message}`);
         app.extensionManager.toast.add({
             severity: "error",
-            summary: "打开配置失败",
-            detail: error.message || "打开配置弹窗过程中发生错误",
+            summary: tUI("打开配置失败"),
+            detail: error.message || tUI("打开配置弹窗过程中发生错误"),
             life: 3000
         });
     }
@@ -303,7 +344,7 @@ function createServiceSelector(type, label) {
     // 创建加载占位容器
     const container = document.createElement("div");
     container.style.minWidth = "180px";
-    container.innerHTML = '<span style="color: var(--p-text-muted-color); font-size: 12px;">加载中...</span>';
+    container.innerHTML = `<span style="color: var(--p-text-muted-color); font-size: 12px;">${tUI("加载中...")}</span>`;
 
     selectCell.appendChild(container);
     row.appendChild(selectCell);
@@ -339,7 +380,7 @@ function createServiceSelector(type, label) {
             container.innerHTML = '';
 
             if (options.length === 0) {
-                container.innerHTML = '<span style="color: var(--p-text-muted-color); font-size: 12px;">暂无可用服务</span>';
+                container.innerHTML = `<span style="color: var(--p-text-muted-color); font-size: 12px;">${tUI("暂无可用服务")}</span>`;
                 return;
             }
 
@@ -397,7 +438,7 @@ function createServiceSelector(type, label) {
         } catch (error) {
             logger.error(`同步${label}配置失败: ${error.message}`);
             if (!updateDropdownOptions) {
-                container.innerHTML = '<span style="color: var(--p-red-400); font-size: 12px;">加载失败</span>';
+                container.innerHTML = `<span style="color: var(--p-red-400); font-size: 12px;">${tUI("加载失败")}</span>`;
             }
         }
     };
@@ -423,11 +464,34 @@ function createServiceSelector(type, label) {
  * 注册设置选项
  * 将设置选项添加到ComfyUI设置面板
  */
-export function registerSettings() {
+export async function registerSettings() {
     try {
+        await ensureUiLocaleLoaded();
+        patchToastLocalization();
+        syncGlobalUiLocalization();
+
         app.registerExtension({
             name: "PromptAssistant.Settings",
-            settings: [
+            settings: localizeSettingsPayload([
+                {
+                    id: UI_LANGUAGE_SETTING_ID,
+                    name: "界面语言",
+                    category: ["✨提示词小助手", "系统", "界面语言"],
+                    type: "combo",
+                    options: [
+                        { text: "English", value: "en" },
+                        { text: "中文", value: "zh" }
+                    ],
+                    defaultValue: "zh",
+                    tooltip: "切换插件界面语言，修改后自动刷新页面生效",
+                    onChange: (value) => {
+                        const previous = getStoredUiLanguage();
+                        const normalized = persistUiLanguage(value);
+                        if (normalized === previous) return;
+                        logger.log(`界面语言已切换: ${normalized}`);
+                        setTimeout(() => window.location.reload(), 80);
+                    }
+                },
                 // 总开关 - 独立控制小助手系统级功能
                 {
                     id: "PromptAssistant.Features.Enabled",
@@ -476,7 +540,7 @@ export function registerSettings() {
                                     if (!isFirstLoad) {
                                         app.extensionManager.toast.add({
                                             severity: "info",
-                                            summary: "提示词小助手已启用",
+                                            summary: tUI("提示词小助手已启用"),
                                             life: 3000
                                         });
                                     }
@@ -495,7 +559,7 @@ export function registerSettings() {
                                     if (!isFirstLoad) {
                                         app.extensionManager.toast.add({
                                             severity: "warn",
-                                            summary: "提示词小助手已禁用",
+                                            summary: tUI("提示词小助手已禁用"),
                                             life: 3000
                                         });
                                     }
@@ -632,7 +696,7 @@ export function registerSettings() {
                         row.appendChild(labelCell);
 
                         const buttonCell = document.createElement("td");
-                        const button = createLoadingButton("API管理器", async () => {
+                        const button = createLoadingButton(tUI("API管理器"), async () => {
                             showAPIConfigModal();
                         }, false); // 设置 showSuccessToast 为 false
 
@@ -872,7 +936,6 @@ export function registerSettings() {
                         logger.log(`节点信息翻译功能 - 已${value ? "启用" : "禁用"}`);
                     }
                 },
-
                 // 系统设置
                 {
                     id: "PromptAssistant.Settings.LogLevel",
@@ -970,7 +1033,7 @@ export function registerSettings() {
                         row.appendChild(labelCell);
 
                         const buttonCell = document.createElement("td");
-                        const button = createLoadingButton("清理所有缓存", async () => {
+                        const button = createLoadingButton(tUI("清理所有缓存"), async () => {
                             try {
                                 // 获取清理前的缓存统计
                                 const beforeStats = {
@@ -1105,7 +1168,7 @@ export function registerSettings() {
 
                         // 从全局变量获取版本号
                         if (!window.PromptAssistant_Version) {
-                            logger.error("未找到版本号，徽标将无法正确显示");
+                            logger.error(tUI("未找到版本号，徽标将无法正确显示"));
                             versionBadge.src = `https://img.shields.io/badge/%E7%89%88%E6%9C%AC-%E6%9C%AA%E7%9F%A5-red?style=flat`;
                             versionContainer.appendChild(versionBadge);
                         } else {
@@ -1117,24 +1180,24 @@ export function registerSettings() {
                             if (versionCheckCache.checked && versionCheckCache.hasUpdate) {
                                 // 已检查过且有更新，直接应用缓存的结果
                                 const latestVersion = versionCheckCache.latestVersion;
-                                const labelEncoded = encodeURIComponent("有新版本");
+                                const labelEncoded = encodeURIComponent(tUI("有新版本"));
                                 const messageEncoded = encodeURIComponent(`${currentVersion}→${latestVersion}`);
                                 versionBadge.src = `https://img.shields.io/badge/${labelEncoded}-${messageEncoded}-orange?style=flat&labelColor=555555`;
                                 versionBadge.style.cursor = "pointer";
-                                versionBadge.title = `当前版本: ${currentVersion}\n最新版本: ${latestVersion}\n点击前往下载`;
+                                versionBadge.title = `${tUI("当前版本:")} ${currentVersion}\n${tUI("最新版本:")} ${latestVersion}\n${tUI("点击前往下载")}`;
                             } else if (!versionCheckCache.checked) {
                                 // 首次检查，发起异步请求
                                 fetchLatestVersion().then(latestVersion => {
                                     if (latestVersion && compareVersion(latestVersion, currentVersion) > 0) {
                                         versionCheckCache.hasUpdate = true;
-                                        const labelEncoded = encodeURIComponent("有新版本");
+                                        const labelEncoded = encodeURIComponent(tUI("有新版本"));
                                         const messageEncoded = encodeURIComponent(`${currentVersion}→${latestVersion}`);
                                         versionBadge.src = `https://img.shields.io/badge/${labelEncoded}-${messageEncoded}-orange?style=flat&labelColor=555555`;
                                         versionBadge.style.cursor = "pointer";
-                                        versionBadge.title = `当前版本: ${currentVersion}\n最新版本: ${latestVersion}\n点击前往下载`;
+                                        versionBadge.title = `${tUI("当前版本:")} ${currentVersion}\n${tUI("最新版本:")} ${latestVersion}\n${tUI("点击前往下载")}`;
                                         logger.log(`[版本检查] 发现新版本: ${currentVersion} → ${latestVersion}`);
                                     } else if (latestVersion) {
-                                        versionBadge.title = `当前已是最新版本: ${currentVersion}`;
+                                        versionBadge.title = `${tUI("当前已是最新版本:")} ${currentVersion}`;
                                         logger.debug(`[版本检查] 当前版本: ${currentVersion}`);
                                     }
                                 }).catch(error => {
@@ -1142,7 +1205,7 @@ export function registerSettings() {
                                 });
                             } else {
                                 // 已检查过但没有更新
-                                versionBadge.title = `当前已是最新版本: ${currentVersion}`;
+                                versionBadge.title = `${tUI("当前已是最新版本:")} ${currentVersion}`;
                             }
                         }
 
@@ -1187,7 +1250,7 @@ export function registerSettings() {
                         wechatTag.style.alignItems = "center";
                         wechatTag.classList.add("has-tooltip", "pa-wechat-badge");
                         const wechatBadge = document.createElement("img");
-                        wechatBadge.alt = "交流反馈群";
+                        wechatBadge.alt = tUI("交流反馈群");
                         wechatBadge.src = "https://img.shields.io/badge/%E4%BA%A4%E6%B5%81%E5%8F%8D%E9%A6%88-blue?logo=wechat&logoColor=green&labelColor=%23FFFFFF&color=%2307A3D7";
                         wechatBadge.style.display = "block";
                         wechatBadge.style.height = "20px";
@@ -1243,7 +1306,7 @@ export function registerSettings() {
                         };
 
 
-                        wechatQrImg.alt = "微信交流群二维码";
+                        wechatQrImg.alt = tUI("微信交流群二维码");
                         wechatQrImg.className = "pa-wechat-qr-img";
 
                         // 加载成功清理超时定时器
@@ -1286,7 +1349,7 @@ export function registerSettings() {
                         row.appendChild(labelCell);
 
                         const buttonCell = document.createElement("td");
-                        const button = createLoadingButton("规则管理器", async () => {
+                        const button = createLoadingButton(tUI("规则管理器"), async () => {
                             showRulesConfigModal();
                         }, false);
 
@@ -1296,7 +1359,7 @@ export function registerSettings() {
                     }
                 },
 
-            ]
+            ])
         });
 
         logger.log("小助手设置注册成功");

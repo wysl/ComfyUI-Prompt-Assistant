@@ -677,6 +677,28 @@ async def update_model_parameter_api(request):
 
 # ====================== 配置API ======================
 
+def _load_ui_locale_messages(language: str):
+    """加载界面本地化词典"""
+    normalized = "en" if language == "en" else "zh"
+    locale_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "locales", normalized, "ui.json")
+    with open(locale_path, "r", encoding="utf-8") as f:
+        return normalized, json.load(f)
+
+@PromptServer.instance.routes.get(f'{API_PREFIX}/config/ui_locale/{{language}}')
+async def get_ui_locale(request):
+    """获取前端UI本地化词典"""
+    try:
+        language = request.match_info.get("language", "zh")
+        normalized, messages = _load_ui_locale_messages(language)
+        return web.json_response({
+            "success": True,
+            "language": normalized,
+            "messages": messages
+        })
+    except Exception as e:
+        print(f"{ERROR_PREFIX} UI本地化词典加载失败 | 错误:{str(e)}")
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
 @PromptServer.instance.routes.get(f'{API_PREFIX}/config/system_prompts')
 async def get_system_prompts_config(request):
     """获取系统提示词配置"""

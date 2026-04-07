@@ -16,6 +16,7 @@ import {
     createSelectButtonGroup
 } from "./uiComponents.js";
 import { APIService } from "../services/api.js";
+import { tUI } from "../utils/uiI18n.js";
 
 
 
@@ -100,7 +101,7 @@ class RulesConfigManager {
             logger.debug('打开规则配置弹窗');
 
             createSettingsDialog({
-                title: '<i class="pi pi-list" style="margin-right: 8px;"></i>规则管理器',
+                title: `<i class="pi pi-list" style="margin-right: 8px;"></i>${tUI('规则管理器')}`,
                 dialogClassName: 'rules-config-dialog',
                 disableBackdropAndCloseOnClickOutside: true,
                 renderContent: (container) => {
@@ -145,10 +146,10 @@ class RulesConfigManager {
             logger.error(`打开规则配置弹窗失败: ${error.message}`);
             app.extensionManager.toast.add({
                 severity: "error",
-                summary: "打开配置失败",
-                detail: error.message || "打开配置弹窗过程中发生错误",
-                life: 3000
-            });
+                    summary: tUI("打开配置失败"),
+                    detail: error.message || "打开配置弹窗过程中发生错误",
+                    life: 3000
+                });
         }
     }
 
@@ -186,11 +187,11 @@ class RulesConfigManager {
 
         // 定义标签页配置（包含是否有添加按钮）
         const tabs = [
-            { id: 'expand', title: '提示词优化规则', subtitle: '提示词优化润色提示词', addLabel: '添加提示词优化规则' },
-            { id: 'zhVision', title: '中文反推', subtitle: '图像反推中文提示词', addLabel: '添加中文反推规则' },
-            { id: 'enVision', title: '英文反推', subtitle: '图像反推英文提示词', addLabel: '添加英文反推规则' },
-            { id: 'video', title: '视频反推', subtitle: '将视频反推提示词', addLabel: '添加视频反推规则' },
-            { id: 'translate', title: '翻译规则', subtitle: '大模型翻译规则', addLabel: null }
+            { id: 'expand', title: tUI('提示词优化规则'), subtitle: tUI('提示词优化润色提示词'), addLabel: tUI('添加提示词优化规则') },
+            { id: 'zhVision', title: tUI('中文反推'), subtitle: tUI('图像反推中文提示词'), addLabel: tUI('添加中文反推规则') },
+            { id: 'enVision', title: tUI('英文反推'), subtitle: tUI('图像反推英文提示词'), addLabel: tUI('添加英文反推规则') },
+            { id: 'video', title: tUI('视频反推'), subtitle: tUI('将视频反推提示词'), addLabel: tUI('添加视频反推规则') },
+            { id: 'translate', title: tUI('翻译规则'), subtitle: tUI('大模型翻译规则'), addLabel: null }
         ];
 
         // 创建标签按钮
@@ -391,7 +392,7 @@ class RulesConfigManager {
         // 创建提示信息
         const notice = document.createElement('div');
         notice.className = 'rule-pane-notice';
-        notice.innerHTML = '<i class="pi pi-info-circle"></i> 翻译规则仅支持编辑，不支持新增和删除';
+        notice.innerHTML = `<i class="pi pi-info-circle"></i> ${tUI('翻译规则仅支持编辑，不支持新增和删除')}`;
         pane.appendChild(notice);
 
         // 存储列表引用
@@ -750,7 +751,7 @@ class RulesConfigManager {
             const editBtn = document.createElement('button');
             editBtn.className = 'prompt-action-btn edit-btn';
             editBtn.innerHTML = '<span class="pi pi-pencil"></span>';
-            editBtn.title = '编辑翻译规则';
+            editBtn.title = tUI('编辑翻译规则');
             editBtn.onclick = (e) => {
                 e.stopPropagation();
                 this._showTranslateEditDialog(prompt.id);
@@ -778,7 +779,7 @@ class RulesConfigManager {
         }
 
         createSettingsDialog({
-            title: '<i class="pi pi-pencil" style="margin-right: 8px;"></i>编辑翻译规则',
+            title: `<i class="pi pi-pencil" style="margin-right: 8px;"></i>${tUI('编辑翻译规则')}`,
             isConfirmDialog: true,
             dialogClassName: 'translate-edit-dialog',
             renderContent: (content) => {
@@ -800,7 +801,7 @@ class RulesConfigManager {
                 nameGroup.style.marginBottom = '10px';
 
                 // 创建内容编辑区
-                const contentTextarea = createTextareaGroup('规则内容', '请输入翻译规则内容', 10);
+                const contentTextarea = createTextareaGroup('规则内容', tUI('请输入翻译规则内容'), 10);
                 contentTextarea.group.style.flex = '1';
                 contentTextarea.group.style.display = 'flex';
                 contentTextarea.group.style.flexDirection = 'column';
@@ -817,7 +818,7 @@ class RulesConfigManager {
                 if (!newContent) {
                     app.extensionManager.toast.add({
                         severity: "error",
-                        summary: "编辑失败",
+                        summary: tUI("编辑失败"),
                         detail: "规则内容不能为空",
                         life: 3000
                     });
@@ -859,7 +860,7 @@ class RulesConfigManager {
             statusCell.className = 'prompt-list-cell status-cell';
             const statusIcon = document.createElement('span');
             statusIcon.className = prompt.isActive ? 'pi pi-check-circle active-status' : 'pi pi-circle-off inactive-status';
-            statusIcon.title = prompt.isActive ? '当前使用中，点击取消激活' : '未激活，点击激活';
+            statusIcon.title = prompt.isActive ? tUI('当前使用中，点击取消激活') : tUI('未激活，点击激活');
             statusCell.appendChild(statusIcon);
             statusCell.onclick = (e) => {
                 e.stopPropagation();
@@ -901,7 +902,7 @@ class RulesConfigManager {
             const editButton = document.createElement('button');
             editButton.className = 'prompt-action-btn edit-btn';
             editButton.innerHTML = '<span class="pi pi-pencil"></span>';
-            editButton.title = '编辑';
+            editButton.title = tUI('编辑');
             editButton.onclick = (e) => {
                 e.stopPropagation();
                 this._showPromptEditDialog(type, prompt.id);
@@ -911,7 +912,7 @@ class RulesConfigManager {
             const deleteButton = document.createElement('button');
             deleteButton.className = 'prompt-action-btn delete-btn';
             deleteButton.innerHTML = '<span class="pi pi-trash"></span>';
-            deleteButton.title = '删除';
+            deleteButton.title = tUI('删除');
             deleteButton.onclick = (e) => {
                 e.stopPropagation();
                 this._deletePrompt(type, prompt.id);
@@ -994,12 +995,12 @@ class RulesConfigManager {
         }
 
         createSettingsDialog({
-            title: isEdit ? '编辑规则' : '添加规则',
+            title: isEdit ? tUI('编辑规则') : tUI('添加规则'),
             isConfirmDialog: true,
             dialogClassName: 'prompt-edit-dialog',
             disableBackdropAndCloseOnClickOutside: true,
-            saveButtonText: isEdit ? '保存' : '添加',
-            cancelButtonText: '取消',
+            saveButtonText: isEdit ? tUI('保存') : tUI('添加'),
+            cancelButtonText: tUI('取消'),
             renderContent: (content) => {
                 content.className += ' dialog-form-content';
                 content.style.padding = '10px 40px'; // 增加两侧留白
@@ -1009,7 +1010,7 @@ class RulesConfigManager {
                 content.style.overflow = 'hidden'; // 整体不滚动，内部 textarea 滚动
 
                 // 创建规则名称输入框
-                const nameInput = createInputGroup('规则名称', '请输入规则名称');
+                const nameInput = createInputGroup('规则名称', tUI('请输入规则名称'));
                 nameInput.group.style.marginBottom = '10px';
                 if (isEdit && editData) {
                     nameInput.input.value = editData.name || '';
@@ -1062,7 +1063,7 @@ class RulesConfigManager {
                 categoryRow.appendChild(showInSelectButton.group);
 
                 // 创建规则内容多行输入框
-                const contentTextarea = createTextareaGroup('规则内容', '请输入规则内容');
+                const contentTextarea = createTextareaGroup('规则内容', tUI('请输入规则内容'));
                 contentTextarea.group.style.marginBottom = '0';
                 contentTextarea.group.style.flex = '1';
                 contentTextarea.group.style.display = 'flex';
@@ -1107,7 +1108,7 @@ class RulesConfigManager {
                 if (!name || !promptContent) {
                     app.extensionManager.toast.add({
                         severity: "error",
-                        summary: isEdit ? "编辑失败" : "添加失败",
+                        summary: isEdit ? tUI("编辑失败") : tUI("添加失败"),
                         detail: "规则名称和内容不能为空",
                         life: 3000
                     });
@@ -1137,8 +1138,8 @@ class RulesConfigManager {
                 if (isDuplicate) {
                     app.extensionManager.toast.add({
                         severity: "error",
-                        summary: isEdit ? "编辑失败" : "添加失败",
-                        detail: `规则名称"${name}"已存在`,
+                        summary: isEdit ? tUI("编辑失败") : tUI("添加失败"),
+                        detail: `${tUI('规则名称')} "${name}" ${tUI('已存在')}`,
                         life: 3000
                     });
                     return;
@@ -1389,20 +1390,20 @@ class RulesConfigManager {
 
         // 创建确认对话框（使用危险按钮样式）
         createSettingsDialog({
-            title: '<i class="pi pi-exclamation-triangle" style="margin-right: 8px; color: var(--p-orange-500);"></i>确认删除',
+            title: `<i class="pi pi-exclamation-triangle" style="margin-right: 8px; color: var(--p-orange-500);"></i>${tUI('确认删除')}`,
             isConfirmDialog: true,
             dialogClassName: 'confirm-dialog',
             disableBackdropAndCloseOnClickOutside: true,
-            saveButtonText: '删除',
+            saveButtonText: tUI('删除'),
             saveButtonIcon: 'pi-trash',
             isDangerButton: true,
-            cancelButtonText: '取消',
+            cancelButtonText: tUI('取消'),
             renderContent: (content) => {
                 content.style.textAlign = 'center';
                 content.style.padding = '1rem';
 
                 const confirmMessage = document.createElement('p');
-                confirmMessage.textContent = `确定要删除规则"${promptName}"吗？`;
+                confirmMessage.textContent = `${tUI('确定要删除规则')} "${promptName}" ${tUI('吗？')}`;
                 confirmMessage.style.margin = '0';
                 confirmMessage.style.fontSize = '1rem';
 
