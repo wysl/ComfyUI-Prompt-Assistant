@@ -992,6 +992,14 @@ class APIConfigManager {
         // 基本信息
         const baseUrlInput = createInputGroup('Base URL', 'https://api.example.com/v1');
         baseUrlInput.input.value = service.base_url || '';
+        
+        // 智谱和 xflow 服务的 Base URL 禁用修改
+        if (service.id === 'zhipu' || service.id === 'xFlow') {
+            baseUrlInput.input.disabled = true;
+            baseUrlInput.input.title = tUI('该预置服务商的 Base URL 不可修改');
+            baseUrlInput.input.classList.add('pa-input-disabled');
+        }
+
         baseUrlInput.input.addEventListener('change', async (e) => {
             await this._updateService(service.id, { base_url: e.target.value });
         });

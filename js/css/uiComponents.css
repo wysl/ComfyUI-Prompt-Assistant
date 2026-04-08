@@ -3564,3 +3564,13 @@ th .pa-trans-text {
 .pa-select-button-large .pa-select-button-icon {
     font-size: 1rem;
 }
+
+/* ===================================================
+   10. 通用输入框样式
+   =================================================== */
+
+/* 禁用状态的输入框 */
+.pa-input-disabled {
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+}
