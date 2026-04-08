@@ -456,8 +456,8 @@
     font-weight: 500;
 }
 
-/* 输入框容器样式 */
-.flex-1 {
+/* 输入框容器样式 - 加上 pa- 前缀防止污染全局 flex-1 */
+.pa-flex-1 {
     flex: 1;
     width: 100%;
 }
@@ -505,21 +505,25 @@
 }
 
 /* ---危险按钮样式--- */
-/* 用于删除等危险操作的按钮 */
-.p-button-danger {
+/* 用于删除等危险操作的按钮 - 限定在插件作用域内 */
+.pa-settings-root .p-button-danger,
+.prompt-assistant-container .p-button-danger {
     background: var(--p-button-danger-background);
     border-color: var(--p-button-danger-border-color);
     color: var(--p-button-danger-color);
 }
 
-.p-button-danger:hover {
+.pa-settings-root .p-button-danger:hover,
+.prompt-assistant-container .p-button-danger:hover {
     background: var(--p-button-danger-hover-background);
     border-color: var(--p-button-danger-hover-border-color);
     color: var(--p-button-danger-color);
 }
 
-.p-button-danger:active,
-.p-button-danger:focus {
+.pa-settings-root .p-button-danger:active,
+.pa-settings-root .p-button-danger:focus,
+.prompt-assistant-container .p-button-danger:active,
+.prompt-assistant-container .p-button-danger:focus {
     outline: none;
     box-shadow: 0 0 0 0.2rem var(--p-button-danger-active-border-color);
 }
@@ -596,8 +600,9 @@
     pointer-events: auto;
 }
 
-/* 隐藏辅助可访问性选择器（在未加载PrimeVue时也生效） */
-.p-hidden-accessible {
+/* 隐藏辅助可访问性选择器 - 限定在插件作用域内 */
+.pa-settings-root .p-hidden-accessible,
+.prompt-assistant-container .p-hidden-accessible {
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
@@ -685,7 +690,7 @@
 
 /* 水平表单布局中的宽度适配 */
 .settings-form-group.horizontal .pa-dropdown,
-.settings-form-group.horizontal .p-inputtext {
+.pa-settings-root .settings-form-group.horizontal .p-inputtext {
     width: 100%;
     min-width: 0;
 }
@@ -1292,7 +1297,7 @@
 }
 
 /* ---添加模型对话框--- */
-.model-listbox {
+.pa-settings-root .model-listbox {
     position: fixed;
     width: 320px;
     max-height: 400px;

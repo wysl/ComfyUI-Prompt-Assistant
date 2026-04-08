@@ -179,6 +179,9 @@ app.registerExtension({
             writable: true,
             configurable: true
         };
+        
+        // 备份以便调试恢复
+        window.__PA_ORIG_GRAPH_DESC__ = originalDescriptor;
 
         // 保存原始值
         let _graphValue = app.canvas.graph;
@@ -520,6 +523,7 @@ app.registerExtension({
 
         // 注入创建钩子 (原型级补救)
         proto.onNodeCreated = function () {
+            console.log(`[PA-DEBUG] onNodeCreated called for node type: ${nodeData.name}`, this);
             if (origOnCreated) origOnCreated.apply(this, arguments);
             self._handleNodeActive(this, { delay: true });
         };

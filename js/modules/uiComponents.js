@@ -71,7 +71,7 @@ export function createSettingsDialog(options) {
 
         // 创建弹窗
         const modal = document.createElement('div');
-        modal.className = 'settings-modal';
+        modal.className = 'settings-modal pa-settings-root';
 
         // 如果提供了额外的对话框类名，添加到modal
         if (dialogClassName) {
