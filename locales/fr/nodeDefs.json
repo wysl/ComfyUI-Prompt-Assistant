@@ -1,0 +1,214 @@
+{
+    "PromptExpand": {
+        "display_name": "✨Expansion de Prompt",
+        "description": "Améliorez et développez votre prompt à l'aide d'un LLM",
+        "inputs": {
+            "rule": {
+                "name": "Règle",
+                "tooltip": "Règle prédéfinie pour l'expansion du prompt"
+            },
+            "custom_rule": {
+                "name": "Règle Personnalisée",
+                "tooltip": "Activer la saisie d'une règle personnalisée ci-dessous"
+            },
+            "custom_rule_content": {
+                "name": "Contenu de Règle",
+                "tooltip": "Saisissez votre règle personnalisée ici ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "user_prompt": {
+                "name": "Prompt Utilisateur",
+                "tooltip": "Votre prompt à développer ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "llm_service": {
+                "name": "Service LLM",
+                "tooltip": "Sélectionner un service LLM"
+            },
+            "ollama_auto_unload": {
+                "name": "Déchargement Auto",
+                "tooltip": "Décharger automatiquement le modèle Ollama"
+            },
+            "source_text": {
+                "name": "Texte Source",
+                "tooltip": "Saisie de texte facultative ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Résultat du Prompt",
+                "tooltip": "Résultat de l'expansion"
+            }
+        }
+    },
+    "ImageCaptionNode": {
+        "display_name": "✨Légende d'Image",
+        "description": "Générer une légende pour l'image à l'aide d'un VLM",
+        "inputs": {
+            "image": {
+                "name": "Image",
+                "tooltip": "Image d'entrée"
+            },
+            "rule": {
+                "name": "Règle",
+                "tooltip": "Règle prédéfinie pour la génération de légende"
+            },
+            "custom_rule": {
+                "name": "Règle Personnalisée",
+                "tooltip": "Activer la saisie d'une règle personnalisée"
+            },
+            "custom_rule_content": {
+                "name": "Contenu de Règle",
+                "tooltip": "Contenu de la règle personnalisée ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "user_prompt": {
+                "name": "Prompt Utilisateur",
+                "tooltip": "Saisissez des prompts supplémentaires ici, envoyés avec la règle ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "vlm_service": {
+                "name": "Service VLM",
+                "tooltip": "Sélectionner un service VLM"
+            },
+            "ollama_auto_unload": {
+                "name": "Déchargement Auto",
+                "tooltip": "Décharger automatiquement le modèle Ollama"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Résultat du Prompt",
+                "tooltip": "Légende générée (combinée pour un lot)"
+            },
+            "1": {
+                "name": "Liste de Prompts",
+                "tooltip": "Liste des légendes pour chaque image du lot"
+            }
+        }
+    },
+    "PromptTranslate": {
+        "display_name": "✨Traduction de Prompt",
+        "description": "Traduire un prompt entre des langues",
+        "inputs": {
+            "source_text": {
+                "name": "Texte Source",
+                "tooltip": "Texte à traduire ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "target_language": {
+                "name": "Langue Cible",
+                "tooltip": "Langue cible pour la traduction",
+                "options": {
+                    "English": "Anglais",
+                    "Chinese": "Chinois"
+                }
+            },
+            "translate_service": {
+                "name": "Service Traduction",
+                "tooltip": "Sélectionner un service de traduction"
+            },
+            "ollama_auto_unload": {
+                "name": "Déchargement Auto",
+                "tooltip": "Décharger automatiquement le modèle Ollama"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Résultat du Prompt",
+                "tooltip": "Résultat de la traduction"
+            }
+        }
+    },
+    "VideoCaptionNode": {
+        "display_name": "✨Légende de Vidéo",
+        "description": "Générer une légende pour la vidéo à l'aide d'un VLM",
+        "inputs": {
+            "rule": {
+                "name": "Règle",
+                "tooltip": "Règle prédéfinie pour la légende de vidéo"
+            },
+            "custom_rule": {
+                "name": "Règle Personnalisée",
+                "tooltip": "Activer la saisie d'une règle personnalisée"
+            },
+            "custom_rule_content": {
+                "name": "Contenu de Règle",
+                "tooltip": "Contenu de la règle personnalisée ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "user_prompt": {
+                "name": "Prompt Utilisateur",
+                "tooltip": "Saisissez des prompts supplémentaires ici, envoyés avec la règle ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "vlm_service": {
+                "name": "Service VLM",
+                "tooltip": "Sélectionner un service VLM"
+            },
+            "sampling_mode": {
+                "name": "Mode d'Échantillonnage",
+                "tooltip": "Choisissez Automatique (Uniforme) pour échantillonner régulièrement. Manuel (Indices) pour sélectionner des images",
+                "options": {
+                    "Auto (Uniform)": "Auto (Uniforme)",
+                    "Manual (Indices)": "Manuel (Indices)"
+                }
+            },
+            "frame_count": {
+                "name": "Nombre d'Images",
+                "tooltip": "Nombre d'images à échantillonner (Mode Auto)"
+            },
+            "manual_indices": {
+                "name": "Indices Manuels",
+                "tooltip": "Indices d'images spécifiques (Mode Manuel)"
+            },
+            "ollama_auto_unload": {
+                "name": "Déchargement Auto",
+                "tooltip": "Décharger automatiquement le modèle Ollama"
+            },
+            "video": {
+                "name": "Vidéo",
+                "tooltip": "Vidéo d'entrée"
+            },
+            "image_sequence": {
+                "name": "Séquence d'Images",
+                "tooltip": "Séquence d'images d'entrée"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Résultat du Prompt",
+                "tooltip": "Légende de vidéo générée"
+            },
+            "1": {
+                "name": "Images Aperçu",
+                "tooltip": "Images de prévisualisation"
+            }
+        }
+    },
+    "KontextPresetNode": {
+        "display_name": "✨Préréglage Kontext",
+        "description": "Générer des instructions créatives avec les préréglages Kontext",
+        "inputs": {
+            "image": {
+                "name": "Image",
+                "tooltip": "Image d'entrée"
+            },
+            "kontext_preset": {
+                "name": "Préréglage",
+                "tooltip": "Sélectionner le préréglage Kontext"
+            },
+            "user_prompt": {
+                "name": "Prompt Utilisateur",
+                "tooltip": "Saisissez des prompts supplémentaires ici ; 💡Entrez le mot déclencheur [R] pour forcer la ré-exécution"
+            },
+            "vlm_service": {
+                "name": "Service VLM",
+                "tooltip": "Sélectionner un service VLM"
+            },
+            "ollama_auto_unload": {
+                "name": "Déchargement Auto",
+                "tooltip": "Décharger automatiquement le modèle Ollama"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Résultat du Prompt",
+                "tooltip": "Instruction créative générée"
+            }
+        }
+    }
+}
