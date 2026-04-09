@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "原文輸入",
                 "tooltip": "可選的輸入文本"
+            },
+            "seed": {
+                "name": "隨機種子",
+                "tooltip": "控制生成的隨機性。選擇非固定模式可強制節點重新執行"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "自動釋放顯存",
                 "tooltip": "生成完成後自動釋放Ollama模型顯存"
+            },
+            "seed": {
+                "name": "隨機種子",
+                "tooltip": "控制生成的隨機性。選擇非固定模式可強制節點重新執行"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "自動釋放顯存",
                 "tooltip": "生成完成後自動釋放Ollama模型顯存"
+            },
+            "seed": {
+                "name": "隨機種子",
+                "tooltip": "控制生成的隨機性。選擇非固定模式可強制節點重新執行"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "圖像序列",
                 "tooltip": "輸入圖像序列"
+            },
+            "seed": {
+                "name": "隨機種子",
+                "tooltip": "控制生成的隨機性。選擇非固定模式可強制節點重新執行"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "自動釋放顯存",
                 "tooltip": "生成完成後自動釋放Ollama模型顯存"
+            },
+            "seed": {
+                "name": "隨機種子",
+                "tooltip": "控制生成的隨機性。選擇非固定模式可強制節點重新執行"
             }
         },
         "outputs": {

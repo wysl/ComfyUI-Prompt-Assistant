@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "Source Text",
                 "tooltip": "Optional input text"
+            },
+            "seed": {
+                "name": "Seed",
+                "tooltip": "Controls randomness of generation. Select non-fixed mode to force re-execution"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "Auto Unload",
                 "tooltip": "Auto unload Ollama model"
+            },
+            "seed": {
+                "name": "Seed",
+                "tooltip": "Controls randomness of generation. Select non-fixed mode to force re-execution"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "Auto Unload",
                 "tooltip": "Auto unload Ollama model"
+            },
+            "seed": {
+                "name": "Seed",
+                "tooltip": "Controls randomness of generation. Select non-fixed mode to force re-execution"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "Images",
                 "tooltip": "Input Image Sequence"
+            },
+            "seed": {
+                "name": "Seed",
+                "tooltip": "Controls randomness of generation. Select non-fixed mode to force re-execution"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "Auto Unload",
                 "tooltip": "Auto unload Ollama model"
+            },
+            "seed": {
+                "name": "Seed",
+                "tooltip": "Controls randomness of generation. Select non-fixed mode to force re-execution"
             }
         },
         "outputs": {

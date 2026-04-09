@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "原文输入",
                 "tooltip": "可选的输入文本"
+            },
+            "seed": {
+                "name": "随机种子",
+                "tooltip": "控制生成的随机性。选择非固定模式可强制节点重新执行"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "自动释放显存",
                 "tooltip": "生成完成后自动释放Ollama模型显存"
+            },
+            "seed": {
+                "name": "随机种子",
+                "tooltip": "控制生成的随机性。选择非固定模式可强制节点重新执行"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "自动释放显存",
                 "tooltip": "生成完成后自动释放Ollama模型显存"
+            },
+            "seed": {
+                "name": "随机种子",
+                "tooltip": "控制生成的随机性。选择非固定模式可强制节点重新执行"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "图像序列",
                 "tooltip": "输入图像序列"
+            },
+            "seed": {
+                "name": "随机种子",
+                "tooltip": "控制生成的随机性。选择非固定模式可强制节点重新执行"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "自动释放显存",
                 "tooltip": "生成完成后自动释放Ollama模型显存"
+            },
+            "seed": {
+                "name": "随机种子",
+                "tooltip": "控制生成的随机性。选择非固定模式可强制节点重新执行"
             }
         },
         "outputs": {

@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "Texte source",
                 "tooltip": "Texte de saisie facultatif "
+            },
+            "seed": {
+                "name": "Graine",
+                "tooltip": "Contrôle le caractère aléatoire de la génération. Sélectionnez un mode non fixe pour forcer la réexécution"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "Déchargement automatique",
                 "tooltip": "Modèle Ollama à déchargement automatique"
+            },
+            "seed": {
+                "name": "Graine",
+                "tooltip": "Contrôle le caractère aléatoire de la génération. Sélectionnez un mode non fixe pour forcer la réexécution"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "Déchargement automatique",
                 "tooltip": "Modèle Ollama à déchargement automatique"
+            },
+            "seed": {
+                "name": "Graine",
+                "tooltip": "Contrôle le caractère aléatoire de la génération. Sélectionnez un mode non fixe pour forcer la réexécution"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "Images",
                 "tooltip": "Séquence d'images d'entrée"
+            },
+            "seed": {
+                "name": "Graine",
+                "tooltip": "Contrôle le caractère aléatoire de la génération. Sélectionnez un mode non fixe pour forcer la réexécution"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "Déchargement automatique",
                 "tooltip": "Modèle Ollama à déchargement automatique"
+            },
+            "seed": {
+                "name": "Graine",
+                "tooltip": "Contrôle le caractère aléatoire de la génération. Sélectionnez un mode non fixe pour forcer la réexécution"
             }
         },
         "outputs": {

@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "Texto fuente",
                 "tooltip": "Texto de entrada opcional"
+            },
+            "seed": {
+                "name": "Semilla",
+                "tooltip": "Controla la aleatoriedad de la generación. Seleccione un modo no fijo para forzar la reejecución"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "Descarga automática",
                 "tooltip": "Descarga automática modelo Ollama"
+            },
+            "seed": {
+                "name": "Semilla",
+                "tooltip": "Controla la aleatoriedad de la generación. Seleccione un modo no fijo para forzar la reejecución"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "Descarga automática",
                 "tooltip": "Descarga automática modelo Ollama"
+            },
+            "seed": {
+                "name": "Semilla",
+                "tooltip": "Controla la aleatoriedad de la generación. Seleccione un modo no fijo para forzar la reejecución"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "Imágenes",
                 "tooltip": "Secuencia de imágenes de entrada"
+            },
+            "seed": {
+                "name": "Semilla",
+                "tooltip": "Controla la aleatoriedad de la generación. Seleccione un modo no fijo para forzar la reejecución"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "Descarga automática",
                 "tooltip": "Descarga automática modelo Ollama"
+            },
+            "seed": {
+                "name": "Semilla",
+                "tooltip": "Controla la aleatoriedad de la generación. Seleccione un modo no fijo para forzar la reejecución"
             }
         },
         "outputs": {

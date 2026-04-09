@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "Kaynak Metin",
                 "tooltip": "İsteğe bağlı metin girişi"
+            },
+            "seed": {
+                "name": "Tohum",
+                "tooltip": "Üretimin rastgeleliğini kontrol eder. Yeniden yürütmeyi zorlamak için sabit olmayan bir mod seçin"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "Otomatik Yüklemeyi Kaldır",
                 "tooltip": "Ollama modelini otomatik olarak kaldır"
+            },
+            "seed": {
+                "name": "Tohum",
+                "tooltip": "Üretimin rastgeleliğini kontrol eder. Yeniden yürütmeyi zorlamak için sabit olmayan bir mod seçin"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "Otomatik Yüklemeyi Kaldır",
                 "tooltip": "Ollama modelini otomatik olarak kaldır"
+            },
+            "seed": {
+                "name": "Tohum",
+                "tooltip": "Üretimin rastgeleliğini kontrol eder. Yeniden yürütmeyi zorlamak için sabit olmayan bir mod seçin"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "Görüntüler",
                 "tooltip": "Girdi görüntü dizisi"
+            },
+            "seed": {
+                "name": "Tohum",
+                "tooltip": "Üretimin rastgeleliğini kontrol eder. Yeniden yürütmeyi zorlamak için sabit olmayan bir mod seçin"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "Otomatik Yüklemeyi Kaldır",
                 "tooltip": "Ollama modelini otomatik olarak kaldır"
+            },
+            "seed": {
+                "name": "Tohum",
+                "tooltip": "Üretimin rastgeleliğini kontrol eder. Yeniden yürütmeyi zorlamak için sabit olmayan bir mod seçin"
             }
         },
         "outputs": {

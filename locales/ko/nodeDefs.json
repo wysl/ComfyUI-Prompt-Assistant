@@ -30,6 +30,10 @@
             "source_text": {
                 "name": "소스 텍스트",
                 "tooltip": "선택적 입력 텍스트입니다."
+            },
+            "seed": {
+                "name": "시드",
+                "tooltip": "생성의 무작위성을 제어합니다. 고정되지 않은 모드를 선택하면 재실행이 강제됩니다"
             }
         },
         "outputs": {
@@ -70,6 +74,10 @@
             "ollama_auto_unload": {
                 "name": "자동 언로드",
                 "tooltip": "Ollama 모델 자동 언로드"
+            },
+            "seed": {
+                "name": "시드",
+                "tooltip": "생성의 무작위성을 제어합니다. 고정되지 않은 모드를 선택하면 재실행이 강제됩니다"
             }
         },
         "outputs": {
@@ -106,6 +114,10 @@
             "ollama_auto_unload": {
                 "name": "자동 언로드",
                 "tooltip": "Ollama 모델 자동 언로드"
+            },
+            "seed": {
+                "name": "시드",
+                "tooltip": "생성의 무작위성을 제어합니다. 고정되지 않은 모드를 선택하면 재실행이 강제됩니다"
             }
         },
         "outputs": {
@@ -166,6 +178,10 @@
             "image_sequence": {
                 "name": "이미지",
                 "tooltip": "입력 이미지 시퀀스"
+            },
+            "seed": {
+                "name": "시드",
+                "tooltip": "생성의 무작위성을 제어합니다. 고정되지 않은 모드를 선택하면 재실행이 강제됩니다"
             }
         },
         "outputs": {
@@ -202,6 +218,10 @@
             "ollama_auto_unload": {
                 "name": "자동 언로드",
                 "tooltip": "Ollama 모델 자동 언로드"
+            },
+            "seed": {
+                "name": "시드",
+                "tooltip": "생성의 무작위성을 제어합니다. 고정되지 않은 모드를 선택하면 재실행이 강제됩니다"
             }
         },
         "outputs": {
