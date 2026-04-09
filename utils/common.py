@@ -296,6 +296,7 @@ class ProgressBar:
         self._state = self.STATE_WAITING
         self._char_count = 0
         self._start_time = time.perf_counter()
+        self._last_refresh_time = 0.0  # 新增：记录最后一次刷新时间，用于限流
         self._closed = False
         self._stop_event = threading.Event()
         self._timer_thread = None
@@ -306,7 +307,7 @@ class ProgressBar:
             _global_last_output_len = 0
         
         # 立即显示"等待响应"
-        self._refresh()
+        self._refresh(force=True)
         
         # 仅在流式模式下启动定时刷新线程（非流式模式采用静态日志，无需跳秒刷新）
         if self._streaming:
@@ -350,10 +351,17 @@ class ProgressBar:
         else:
             return ""
     
-    def _refresh(self) -> None:
+    def _refresh(self, force: bool = False) -> None:
         """内部刷新方法：单行覆盖输出"""
         if self._closed:
             return
+            
+        # 降频处理：如果非强制刷新，则限制最高频率为 0.3 秒一次，避免因环境不支持动态覆盖而疯狂刷屏
+        now = time.perf_counter()
+        if not force and (now - self._last_refresh_time < 0.3):
+            return
+            
+        self._last_refresh_time = now
         
         output = self._render()
         if not output:
@@ -388,10 +396,10 @@ class ProgressBar:
         try:
             while not self._stop_event.is_set() and not self._closed:
                 # 定时刷新当前内容（主要用于更新 WAITING 阶段的时间）
-                self._refresh()
+                self._refresh(force=True)
                 
-                # 每 0.1 秒刷新一次
-                if self._stop_event.wait(0.1):
+                # 降低刷新频率：每 0.3 秒刷新一次，大幅减少不支持动态覆盖时的刷屏
+                if self._stop_event.wait(0.3):
                     break
         except Exception:
             pass # 守护线程异常不应影响主流程
@@ -408,7 +416,7 @@ class ProgressBar:
         
         self._state = self.STATE_GENERATING
         self._char_count = char_count
-        self._refresh()  # 状态变化时总是刷新
+        self._refresh(force=True)  # 状态变化时总是强制刷新
     
     def update(self, char_count: int) -> None:
         """
@@ -425,9 +433,9 @@ class ProgressBar:
         
         self._char_count = char_count
         
-        # 流式模式：高频刷新
+        # 流式模式：高频刷新 (实际频率受 _refresh 内的降频限制)
         if self._streaming:
-            self._refresh()
+            self._refresh(force=False)
         # 静态模式：不在这里刷新，只有状态变化时才刷新
     
     def done(self, message: str = None, char_count: int = None, elapsed_ms: int = None) -> None:
