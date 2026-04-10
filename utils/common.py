@@ -641,6 +641,10 @@ def format_api_error(e: Exception, provider_display_name: str) -> str:
     返回:
         str: 格式化后的错误信息
     """
+    # 处理编码异常
+    if isinstance(e, UnicodeEncodeError):
+        return f"{provider_display_name} 网络请求编码异常: 检测到非法字符 (\u2026 或其他非 ASCII 字符)。请检查服务商配置中的 API Key 或 URL 是否包含多余的省略号、引号或空格。"
+
     # 处理httpx的HTTP错误
     try:
         import httpx

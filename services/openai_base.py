@@ -176,6 +176,10 @@ class OpenAICompatibleService(BaseAPIService):
         from ..server import is_streaming_progress_enabled
         
         try:
+            # 清理输入参数
+            base_url = cls._sanitize_config_str(base_url)
+            api_key = cls._sanitize_config_str(api_key)
+            
             # 构建请求URL
             url = cls.parse_api_url(base_url)
             
@@ -375,10 +379,15 @@ class OpenAICompatibleService(BaseAPIService):
                 try:
                     result = await _do_stream_request()
                 except Exception as req_err:
-                    # 网络层面的异常（非HTTP响应），通常不适合通过参数降级解决，除非确认是特定的协议问题
-                    # 这里选择继续抛出或作为错误返回，不盲目重试
-                    # 但为了稳健，如果是非连接已建立后的错误，可以选择不重试
-                    # 为简单起见，仅记录错误
+                    # 网络层面的异常（非HTTP响应）
+                    
+                    # 特别处理编码错误 (UnicodeEncodeError)
+                    if isinstance(req_err, UnicodeEncodeError):
+                        error_detail = "网络请求编码异常: 检测到非法字符 (\u2026 或其他非 ASCII 字符)。请检查服务商配置中的 API Key 或 URL 是否包含多余的省略号、引号或空格。"
+                        if 'pbar' in locals() and pbar:
+                            pbar.error(error_detail)
+                        return {"success": False, "error": error_detail}
+                    
                     if 'pbar' in locals() and pbar:
                         pbar.error(f"网络请求异常: {req_err}")
                     return {"success": False, "error": f"网络请求异常: {req_err}"}
@@ -492,3 +501,20 @@ class OpenAICompatibleService(BaseAPIService):
             return base_url
         
         return None
+
+    @staticmethod
+    def _sanitize_config_str(s: str) -> str:
+        """
+        清理配置字符串中的非法字符（如空格、引号、不可见字符等）
+        防止因复制粘贴导致的请求失败
+        """
+        if not s or not isinstance(s, str):
+            return s
+        # 1. 移除两端空格和常见引号
+        s = s.strip().strip('"').strip("'")
+        # 2. 移除常见的 Unicode 干扰字符（如 \u2026 省略号）
+        # 注意：这里我们选择将其替换为空，因为 API Key 中不应包含这些字符
+        s = s.replace('\u2026', '') 
+        # 3. 移除不可见的制表符和换行符
+        s = s.replace('\t', '').replace('\n', '').replace('\r', '')
+        return s
