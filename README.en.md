@@ -22,7 +22,15 @@
 ## **📣 Updates**
 
 <details open>
-<summary><strong>[2026-04-09] 🔥 V2.0.5</strong></summary>
+<summary><strong>[2026-04-15] 🔥 V2.0.6</strong></summary>
+
+**Fixes:**
+* **Subgraph Mounting Optimization**: Fixed assistant initialization and stability on Subgraph nodes across Node 2.0 (Vue) and LiteGraph modes. Supported precise matching for multiple identically-named inputs.
+
+</details>
+
+<details>
+<summary><strong>V2.0.5</strong></summary>
 
 **Changes:**
 
@@ -41,14 +49,14 @@
 </details>
 
 <details>
-<summary><strong>[2026-02-15] V2.0.4</strong></summary>
+<summary><strong>V2.0.4</strong></summary>
 
 * **Bug Fixes**: Fixed issues where tag and history functions were unavailable.
 
 </details>
 
 <details>
-<summary><strong>[2026-02-13] V2.0.3</strong></summary>
+<summary><strong>V2.0.3</strong></summary>
 
 * **Assistant UI**: Fixed instability of the assistant creator in subgraphs and cases where creators failed to appear when image nodes lacked images.
   
@@ -57,7 +65,7 @@
 </details>
 
 <details>
-<summary><strong>[2026-01-10] V2.0.2</strong></summary>
+<summary><strong>V2.0.2</strong></summary>
 
 * **Tag Module**: Fixed formatting issues; users can now freely create categories and manage tags. Fixed preset creation and migration errors.
   
@@ -80,7 +88,7 @@
 </details>
 
 <details>
-<summary><strong>[2025-12-21] V2.0.0</strong></summary>
+<summary><strong>V2.0.0</strong></summary>
 
 * **Core Refactoring**: Completely rebuilt the assistant for better stability and response speed via API/Ollama.
   
@@ -94,6 +102,9 @@
 * **New Features**: Node doc translation and Markdown node translation.
 
 </details>
+
+<details>
+<summary><strong>V1.x.x</strong></summary>
 
 <details>
 <summary><strong>V1.2.x </strong></summary>
@@ -142,6 +153,98 @@
 * Optimized caption and translation nodes.
 * Added community feedback badge.
 * Fixed various UI and request bugs.
+
+</details>
+</details>
+<details>
+<summary><strong>V1.1.x </strong></summary>
+
+<details>
+<summary>[2025-08-28] V1.1.3 </summary>
+
+* Optimized Assistant UI to automatically avoid scrollbars and prevent overlapping accidental triggers.
+* Fixed an issue where the tag popup lacked a scrollbar, causing incomplete content display.
+
+</details>
+
+<details>
+<summary>[2025-08-23] V1.1.2 </summary>
+
+* Refactored nodes to resolve multiple queues and duplicate execution issues during runtime.
+* Added model parameters to the API config interface; some errors can be resolved by adjusting the max token count.
+* Simplified image captioning workflow to improve captioning speed.
+* Fixed an issue where unloaded tags couldn't be searched during on-demand loading.
+
+</details>
+
+<details>
+<summary>[2025-08-10] V1.1.1 </summary>
+
+* Fixed image caption node errors.
+
+</details>
+
+<details>
+<summary>[2025-08-10] V1.1.0 </summary>
+
+* Modified UI interactions.
+* Supported all OpenAI SDK compatible APIs.
+* Added custom rules.
+* Added custom tags.
+* Added Image Caption, Kontext Preset, and Translation nodes.
+
+</details>
+
+</details>
+
+<details>
+<summary><strong>V1.0.x</strong> </summary>
+
+<details>
+<summary>[2025-06-24] V1.0.6</summary>
+
+* Fixed some UI bugs.
+
+</details>
+
+<details>
+<summary>[2025-06-24] V1.0.5</summary>
+
+* Fixed assistant UI anomaly when creating a kontext node using the selection toolbar.
+* Fixed Zhipu service unavailability likely caused by network conditions.
+* Fixed workflow loading failures caused by instance clearing errors.
+* Fixed an issue where the AIGODLIKE-COMFYUI-TRANSLATION plugin caused the tag popup to freeze.
+* Added resizable tag panel.
+* Optimized UI resource loading mechanism.
+
+</details>
+
+<details>
+<summary>[2025-06-24] V1.0.3</summary>
+
+* Refactored API request service to prevent API keys from being exposed to the frontend.
+* Modified config save/load mechanism to fix config saving issues.
+* Fixed minor bugs.
+
+</details>
+
+<details>
+<summary>[2025-06-21] V1.0.2</summary>
+
+* Fixed minor bugs.
+
+</details>
+
+<details>
+<summary>[2025-06-15] V1.0.0</summary>
+
+* One-click tag insertion.
+* LLM expansion support.
+* Toggle between Baidu Translate and LLM Translate.
+* Image to prompt captioning.
+* History, undo, and redo.
+
+</details>
 
 </details>
 </details>

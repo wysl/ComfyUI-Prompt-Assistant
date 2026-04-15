@@ -25,7 +25,15 @@
 ## **📣更新**
 
 <details open>
-<summary><strong>[2026-04-09] 🔥V2.0.5</strong></summary>
+<summary><strong>[2026-04-15] 🔥V2.0.6</strong></summary>
+
+**Fixes:**
+* **子图挂载优化**：修复子图（Subgraph）节点在 Node 2.0 (Vue) 和 LiteGraph 模式下无法创建小助手或挂载不稳定的问题，支持子图中多个同名输入框的精确匹配。
+
+</details>
+
+<details>
+<summary><strong>V2.0.5</strong></summary>
 
 **Changes:**
 
@@ -40,19 +48,19 @@
 
 * **置灰内置服务商 baseUrl输入框**：避免误修改导致请求出现移除。
 
-* **网络异常报错**：修复因为强制直连机制，导致修复xflow 等中转站请求出现网络异常报错。
+* **网络异常报错**：修复因为强制直连机制，导致 xflow 等中转站请求出现网络异常报错。
 * **图像节点✨图标移至右侧**:避免node2.0 下与节点 id 信息重叠。
 
 </details>
 <details>
-<summary><strong>[2026-2-15] V2.0.4</strong></summary>
+<summary><strong>V2.0.4</strong></summary>
 
 
 * **bug修复**：修复标签和历史功能无法使用的问题；
 
 </details>
 <details>
-<summary><strong>[2026-2-13] V2.0.3</strong></summary>
+<summary><strong>V2.0.3</strong></summary>
 
 
 * **小助手UI**：修复子图节小助手创建不稳定的情况，图像节点丢失图像的情况下无法创建小助手的情况；
@@ -61,7 +69,7 @@
 
 </details>
 <details>
-<summary><strong>[2026-1-10] V2.0.2</strong></summary>
+<summary><strong>V2.0.2</strong></summary>
 
 * **标签模块**：修复格式问题，现在可以在自由新建分类和管理标签了。修复预设创建和迁移出错问题；
   
@@ -83,7 +91,7 @@
 
 </details>
 <details>
-<summary><strong>[2025-12-21] V2.0.0</strong></summary>
+<summary><strong>V2.0.0</strong></summary>
 
 * **调用优化**：全面重构小助手，提升API、Ollama调用和稳定度、响应速度；
   
@@ -99,7 +107,9 @@
 </details>
 
 <details>
+<summary><strong>V1.x.x</strong></summary>
 
+<details>
 <summary><strong>V1.2.x </strong></summary>
 
 <details>
@@ -254,6 +264,8 @@
 * 支持百度翻译和llm翻译切换
 * 图片反推提示词
 * 历史、撤销、重做
+
+</details>
 
 </details>
 

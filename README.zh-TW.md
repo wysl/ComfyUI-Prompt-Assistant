@@ -22,7 +22,15 @@
 ## **📣 更新**
 
 <details open>
-<summary><strong>[2026-04-09] 🔥 V2.0.5</strong></summary>
+<summary><strong>[2026-04-15] 🔥 V2.0.6</strong></summary>
+
+**修正:**
+* **子圖掛載優化**：修復子圖（Subgraph）節點在 Node 2.0 (Vue) 和 LiteGraph 模式下無法創建小助手或掛載不穩定的問題，支援子圖中多個同名輸入框的精確匹配。
+
+</details>
+
+<details>
+<summary><strong>V2.0.5</strong></summary>
 
 **Changes:**
 
@@ -42,14 +50,14 @@
 </details>
 
 <details>
-<summary><strong>[2026-02-15] V2.0.4</strong></summary>
+<summary><strong>V2.0.4</strong></summary>
 
 * **bug 修復**：修復標籤和歷史功能無法使用的問題；
 
 </details>
 
 <details>
-<summary><strong>[2026-02-13] V2.0.3</strong></summary>
+<summary><strong>V2.0.3</strong></summary>
 
 * **小助手 UI**：修復子圖節小助手創建不穩定的情況，圖像節點丟失圖像的情況下無法創建小助手的情況；
   
@@ -58,7 +66,7 @@
 </details>
 
 <details>
-<summary><strong>[2026-01-10] V2.0.2</strong></summary>
+<summary><strong>V2.0.2</strong></summary>
 
 * **標籤模塊**：修復格式問題，現在可以自由新建分類和管理標籤了。修復預設創建和遷移出錯問題；
   
@@ -81,7 +89,7 @@
 </details>
 
 <details>
-<summary><strong>[2025-12-21] V2.0.0</strong></summary>
+<summary><strong>V2.0.0</strong></summary>
 
 * **調用優化**：全面重構小助手，提升 API、Ollama 調用和穩定度、響應速度；
   
@@ -94,6 +102,156 @@
 * **用戶配置文件遷移**：遷移到 `\user\default\prompt-assistant` 避免重裝時用戶數據丟失；
 * **新增功能**：節點文檔翻譯、markdown 節點翻譯
 
+</details>
+
+<details>
+<summary><strong>V1.x.x</strong></summary>
+
+<details>
+<summary><strong>V1.2.x </strong></summary>
+
+<details>
+<summary>[2025-11-12] V1.2.3 </summary>
+
+* 修復 ollama 和自定義服務時，返回為空的問題；
+* Ollama 改用原生接口，更好支持 qwen3vl；
+* 新增 http api 作為保底，避免出現請求異常；
+
+</details>
+
+<details>
+<summary>[2025-10-14] V1.2.2 </summary>
+
+* 移除兼容代碼，不再支持 comfyUI 0.3.27 以下的版本。避免小助手 UI 出現問題；
+* 修復擴寫、翻譯使用 302.ai 服務時報錯問題，ollama 無法自動釋放問題；
+* 所有節點添加獨立的 ollama 釋放選項；
+* 移除 llm 和 vlm 的強制直連參數，避免偶發請求報錯問題，在設置界面中添加是否直連選項；
+* 優化控制台日誌輸出格式，顯示更加清晰直觀；
+
+</details>
+
+<details>
+<summary>[2025-10-14] V1.2.1 </summary>
+
+* 優化小助手 UI 的反應靈敏度；
+* 增強 api 請求重試機制；
+* 設置界面新增翻譯標點符號、自動移除多餘空格、移除多餘連續點號、保留換行符等選項；
+* 標籤窗口記憶窗口大小，記憶上次選中的分類，以及標籤欄滾動；
+* API 配置界面，新增自動獲取模型列表功能；
+* Ollama 新增自動釋放顯存選項；
+* 修復預覽任意節點在列表情況無法為每個文本框創建小助手的 bug。
+
+</details>
+
+<details>
+<summary>[2025-09-16] V1.2.0 </summary>
+
+* 新增提示詞擴寫節點
+* 新增 302.AI、Ollama 服務
+* 標籤面板新增記憶功能
+* 右鍵菜單支持快速切換服務
+* 針對某些主流模型支持關閉思維鏈
+* 優化反推和翻譯節點
+* 新增交流反饋入口徽標
+* 修復下拉菜單 bug
+* 修復標籤面板搜索標籤無法插入 bug
+* 修復 base_url 裁剪錯誤，解決偶發性請求報錯
+
+</details>
+
+</details>
+
+<details>
+<summary><strong>V1.1.x </strong></summary>
+
+<details>
+<summary>[2025-08-28] V1.1.3 </summary>
+
+* 優化 Assistant UI to automatically avoid scrollbars and prevent overlapping accidental triggers.
+* 修復 an issue where the tag popup lacked a scrollbar, causing incomplete content display.
+
+</details>
+
+<details>
+<summary>[2025-08-23] V1.1.2 </summary>
+
+* Refactored nodes to resolve multiple queues and duplicate execution issues during runtime.
+* 新增 model parameters to the API config interface; some errors can be resolved by adjusting the max token count.
+* Simplified image captioning workflow to improve captioning speed.
+* 修復 an issue where unloaded tags couldn't be searched during on-demand loading.
+
+</details>
+
+<details>
+<summary>[2025-08-10] V1.1.1 </summary>
+
+* 修復 image caption node errors.
+
+</details>
+
+<details>
+<summary>[2025-08-10] V1.1.0 </summary>
+
+* 修改 UI interactions.
+* 支持 all OpenAI SDK compatible APIs.
+* 新增 custom rules.
+* 新增 custom tags.
+* 新增 Image Caption, Kontext Preset, and Translation nodes.
+
+</details>
+
+</details>
+
+<details>
+<summary><strong>V1.0.x</strong> </summary>
+
+<details>
+<summary>[2025-06-24] V1.0.6</summary>
+
+* 修復 some UI bugs.
+
+</details>
+
+<details>
+<summary>[2025-06-24] V1.0.5</summary>
+
+* 修復 assistant UI anomaly when creating a kontext node using the selection toolbar.
+* 修復 Zhipu service unavailability likely caused by network conditions.
+* 修復 workflow loading failures caused by instance clearing errors.
+* 修復 an issue where the AIGODLIKE-COMFYUI-TRANSLATION plugin caused the tag popup to freeze.
+* 新增 resizable tag panel.
+* 優化 UI resource loading mechanism.
+
+</details>
+
+<details>
+<summary>[2025-06-24] V1.0.3</summary>
+
+* Refactored API request service to prevent API keys from being exposed to the frontend.
+* 修改 config save/load mechanism to fix config saving issues.
+* 修復 minor bugs.
+
+</details>
+
+<details>
+<summary>[2025-06-21] V1.0.2</summary>
+
+* 修復 minor bugs.
+
+</details>
+
+<details>
+<summary>[2025-06-15] V1.0.0</summary>
+
+* One-click tag insertion.
+* LLM expansion support.
+* Toggle between Baidu Translate and LLM Translate.
+* Image to prompt captioning.
+* History, undo, and redo.
+
+</details>
+
+</details>
 </details>
 
 ## **✨ 功能介紹**

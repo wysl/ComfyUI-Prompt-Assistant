@@ -22,7 +22,15 @@
 ## **📣 업데이트**
 
 <details open>
-<summary><strong>[2026-04-09] 🔥 V2.0.5</strong></summary>
+<summary><strong>[2026-04-15] 🔥 V2.0.6</strong></summary>
+
+**수정:**
+* **서브그래프 마운트 최적화**: Node 2.0 (Vue) 및 LiteGraph 모드에서 서브그래프(Subgraph) 노드의 어시스턴트 생성 및 안정성 문제를 수정했습니다. 여러 동명 입력 항목의 정확한 매칭을 지원합니다.
+
+</details>
+
+<details>
+<summary><strong>V2.0.5</strong></summary>
 
 **Changes:**
 
@@ -42,14 +50,14 @@
 </details>
 
 <details>
-<summary><strong>[2026-02-15] V2.0.4</strong></summary>
+<summary><strong>V2.0.4</strong></summary>
 
 * **버그 수정**: 태그 및 기록 기능을 사용할 수 없던 문제를 수정했습니다.
 
 </details>
 
 <details>
-<summary><strong>[2026-02-13] V2.0.3</strong></summary>
+<summary><strong>V2.0.3</strong></summary>
 
 * **어시스턴트 UI**: 서브그래프에서 어시스턴트 생성의 불안정함과 이미지 노드에 이미지가 없을 때 생성되지 않던 문제를 수정했습니다.
   
@@ -58,7 +66,7 @@
 </details>
 
 <details>
-<summary><strong>[2026-01-10] V2.0.2</strong></summary>
+<summary><strong>V2.0.2</strong></summary>
 
 * **태그 모듈**: 포맷 문제를 수정하여 자유롭게 카테고리를 생성하고 태그를 관리할 수 있게 되었습니다. 프리셋 생성 및 마이그레이션 오류를 수정했습니다.
   
@@ -79,7 +87,7 @@
 </details>
 
 <details>
-<summary><strong>[2025-12-21] V2.0.0</strong></summary>
+<summary><strong>V2.0.0</strong></summary>
 
 * **핵심 리팩토링**: 어시스턴트의 API 및 Ollama 호출 안정성과 응답 속도를 대폭 개선했습니다.
   
@@ -91,6 +99,157 @@
 * **노드 리뉴얼**: 모든 노드를 다국어 지원으로 재구축했습니다. 비디오 캡션 노드(**Beta**)를 추가했습니다.
 * **마이그레이션**: 사용자 구성을 `\user\default\prompt-assistant`로 이동하여 재설치 시 데이터 손실을 방지했습니다.
 * **신규 기능**: 노드 문서 번역 및 Markdown 노드 번역 추가.
+
+</details>
+
+<details>
+<summary><strong>V1.x.x</strong></summary>
+
+<details>
+<summary><strong>V1.2.x </strong></summary>
+
+<details>
+<summary>[2025-11-12] V1.2.3 </summary>
+
+* Ollama 및 사용자 지정 서비스 사용 시 빈 결과가 반환되는 문제를 수정했습니다.
+* Ollama는 qwen3vl 지원을 개선하기 위해 네이티브 API를 사용합니다.
+* 요청 예외를 방지하기 위해 HTTP API 폴백을 추가했습니다.
+
+</details>
+
+<details>
+<summary>[2025-10-14] V1.2.2 </summary>
+
+* 호환성 코드를 제거했으며, ComfyUI 0.3.27 미만 버전은 더 이상 지원되지 않습니다.
+* 302.ai 서비스로 프롬프트 확장 및 번역 시 발생하는 오류와 Ollama의 자동 언로드 실패 문제를 수정했습니다.
+* 모든 노드에 독립적인 Ollama 언로드 옵션을 추가했습니다.
+* 드문 요청 오류를 방지하기 위해 LLM/VLM에 대한 강제 직접 연결 파라미터를 제거하고, 설정에 직접 연결 옵션을 추가했습니다.
+* 콘솔 로그 출력 형식을 보다 직관적으로 최적화했습니다.
+
+</details>
+
+<details>
+<summary>[2025-10-14] V1.2.1 </summary>
+
+* 어시스턴트 UI 반응 속도를 향상했습니다.
+* API 요청 재시도 메커니즘을 강화했습니다.
+* 구두점 번역, 불필요한 공백/연속 마침표 자동 제거, 줄바꿈 유지 옵션을 설정에 추가했습니다.
+* 태그 창 크기, 마지막 선택 카테고리, 태그 바 스크롤 위치를 기억하도록 개선했습니다.
+* API 설정 화면에 모델 목록 자동 가져오기 기능을 추가했습니다.
+* Ollama 자동 VRAM 언로드 옵션을 추가했습니다.
+* 리스트 뷰에서 노드를 미리 볼 때 각 텍스트 상자에 어시스턴트를 생성할 수 없던 버그를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-09-16] V1.2.0 </summary>
+
+* 프롬프트 확장 노드를 추가했습니다.
+* 302.AI 및 Ollama 서비스를 추가했습니다.
+* 태그 패널에 메모리 기능을 추가했습니다.
+* 우클릭 메뉴를 통한 빠른 서비스 전환 기능을 추가했습니다.
+* 일부 주류 모델에서 CoT(생각의 사슬) 비활성화를 지원합니다.
+* 캡션 및 번역 노드를 최적화했습니다.
+* 커뮤니티 피드백 배지를 추가했습니다.
+* 드롭다운 메뉴 버그를 수정했습니다.
+* 검색된 태그를 패널에서 삽입할 수 없던 버그를 수정했습니다.
+* 간혹 요청 오류를 일으키던 base_url 자르기 오류를 수정했습니다.
+
+</details>
+
+</details>
+
+<details>
+<summary><strong>V1.1.x </strong></summary>
+
+<details>
+<summary>[2025-08-28] V1.1.3 </summary>
+
+* 스크롤바를 자동으로 피하여 우발적인 터치 중복을 방지하도록 UI를 최적화했습니다.
+* 태그 팝업에 스크롤바가 생기지 않아 내용이 잘리던 문제를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-08-23] V1.1.2 </summary>
+
+* 실행 중 다중 대기열 및 중복 실행 문제를 해결하기 위해 노드를 리팩터링했습니다.
+* API 설정 화면에 모델 파라미터를 추가했습니다 (최대 토큰 수를 조절하여 일부 오류를 해결할 수 있습니다).
+* 이미지 캡션 워크플로를 간소화하여 속도를 높였습니다.
+* 태그 지연 로딩 시 로딩되지 않은 태그를 검색할 수 없던 문제를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-08-10] V1.1.1 </summary>
+
+* 이미지 캡션 노드 오류를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-08-10] V1.1.0 </summary>
+
+* UI 상호 작용을 수정했습니다.
+* OpenAI SDK 호환 API를 모두 지원합니다.
+* 사용자 지정 규칙을 추가했습니다.
+* 사용자 지정 태그를 추가했습니다.
+* 이미지 캡션, Kontext 프리셋 및 번역 노드를 추가했습니다.
+
+</details>
+
+</details>
+
+<details>
+<summary><strong>V1.0.x</strong> </summary>
+
+<details>
+<summary>[2025-06-24] V1.0.6</summary>
+
+* 몇 가지 UI 버그를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-06-24] V1.0.5</summary>
+
+* 선택 도구 모음으로 Kontext 노드 생성 시 어시스턴트 UI 이상을 수정했습니다.
+* 네트워크 문제로 인한 Zhipu 서비스 장애를 수정했습니다.
+* 인스턴스 지우기 오류로 인한 워크플로 로드 실패를 수정했습니다.
+* AIGODLIKE-COMFYUI-TRANSLATION 플러그인과 충돌하여 태그 일시 정지 현상을 수정했습니다.
+* 크기 조절이 가능한 태그 패널을 추가했습니다.
+* UI 리소스 로드 메커니즘을 최적화했습니다.
+
+</details>
+
+<details>
+<summary>[2025-06-24] V1.0.3</summary>
+
+* API 키가 노출되는 것을 방지하기 위해 API 서비스를 리팩터링했습니다.
+* 설정이 저장되지 않던 문제를 해결하기 위해 저장/로드 메커니즘을 수정했습니다.
+* 사소한 버그를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-06-21] V1.0.2</summary>
+
+* 사소한 버그를 수정했습니다.
+
+</details>
+
+<details>
+<summary>[2025-06-15] V1.0.0</summary>
+
+* 원클릭 태그 삽입.
+* LLM 프롬프트 확장 지원.
+* Baidu 번역과 LLM 번역 전환 지원.
+* 이미지 캡션 기능.
+* 기록, 실행 취소, 다시 실행.
+
+</details>
+
+</details>
 
 </details>
 
