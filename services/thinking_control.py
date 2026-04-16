@@ -221,7 +221,7 @@ def get_rule_info(provider: str, model: str) -> Dict[str, Any]:
                     "description": "Ollama原生API",
                     "params": {
                         OLLAMA_NATIVE_RULES["parameter_name"]: 
-                        OLLAMA_NATIVE_RULES["parameter_value"]
+                        OLLAMA_NATIVE_RULES["disable_value"]  # 修复：原为不存在的 "parameter_value"
                     },
                     "sources": ["Ollama /api/chat"]
                 }

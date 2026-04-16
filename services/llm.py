@@ -548,13 +548,63 @@ class LLMService(OpenAICompatibleService):
             thinking_disabled = _thinking_extra is not None and disable_thinking_enabled
             model_display = format_model_with_thinking(model, thinking_disabled)
 
-            # 翻译提示词
-            translate_instruction = f"请将以下文本从{from_lang}翻译成{to_lang}，只输出翻译结果，不要添加任何解释或额外内容："
-            
+            # 正确修复(BUG-06): 从规则管理器读取用户自定义翻译提示词
+            # translate_prompts 配置中包含 {src_lang}/{dst_lang} 占位符，运行时动态替换
+            # 语言代码映射为自然语言名称，提升模型理解稳定性
+            _LANG_NAMES = {
+                "zh": "Simplified Chinese (简体中文)",
+                "zh-tw": "Traditional Chinese (繁體中文)",
+                "en": "English",
+                "ja": "Japanese (日本語)",
+                "ko": "Korean (한국어)",
+                "fr": "French",
+                "de": "German",
+                "es": "Spanish",
+                "ru": "Russian",
+                "ar": "Arabic",
+                "pt": "Portuguese",
+                "pt-br": "Brazilian Portuguese",
+                "it": "Italian",
+                "tr": "Turkish",
+                "fa": "Persian (Farsi)",
+                "auto": "the detected source language"
+            }
+            from_name = _LANG_NAMES.get(from_lang.lower(), from_lang)
+            to_name = _LANG_NAMES.get(to_lang.lower(), to_lang)
+
+            translate_instruction = None
+            try:
+                system_prompts_data = config_manager.get_system_prompts()
+                translate_prompts = system_prompts_data.get("translate_prompts", {})
+                # 读取激活的翻译规则（当前只有 ZH，后续可扩展）
+                active_prompts = system_prompts_data.get("active_prompts", {})
+                active_translate_id = active_prompts.get("translate", "ZH")
+                prompt_entry = translate_prompts.get(active_translate_id)
+                # 若激活的规则不存在，回退到第一个可用规则
+                if not prompt_entry and translate_prompts:
+                    prompt_entry = next(iter(translate_prompts.values()))
+                if prompt_entry and prompt_entry.get("content"):
+                    # 替换 {src_lang} / {dst_lang} 占位符为自然语言名称
+                    translate_instruction = (
+                        prompt_entry["content"]
+                        .replace("{src_lang}", from_name)
+                        .replace("{dst_lang}", to_name)
+                    )
+            except Exception as e:
+                print(f"\n[PA] 读取翻译规则失败，使用默认提示词: {e}", flush=True)
+
+            # 终极兜底：规则管理器读取失败时使用英文简化指令
+            if not translate_instruction:
+                translate_instruction = (
+                    f"Translate the following text from {from_name} to {to_name}. "
+                    f"Output only the translation result with no explanations or additional content."
+                )
+
             messages = [
                 {"role": "system", "content": translate_instruction},
                 {"role": "user", "content": text}
             ]
+
 
             # Ollama走原生API (通过服务类型判断)
             if service and service.get('type') == 'ollama':

@@ -220,20 +220,25 @@ class ImageCaptionNode(VLMNodeBase, io.ComfyNode):
             if not provider_config.get('api_key', '') or not provider_config.get('model', ''):
                 raise ValueError(f"Please configure API key and model for {vlm_service}")
 
+            # 从 system_message 字典中提取纯文本内容
+            system_text = system_message.get('content', '') if isinstance(system_message, dict) else str(system_message)
+            prompt_to_send = f"{system_text}\n\n{user_prompt}".strip() if user_prompt else system_text
+
             result = cls._run_vision_task(
                 VisionService.analyze_image,
                 service_id,
-                base64_image=base64_image,
-                user_prompt=user_prompt,
+                image_data=base64_image,
+                prompt_content=prompt_to_send,
                 request_id=request_id,
                 custom_provider=service_id,
                 custom_provider_config=provider_config,
-                system_message_override=system_message,
                 source=SOURCE_NODE
             )
 
             if result and result.get('success'):
-                caption_text = result.get('data', {}).get('caption', '').strip()
+                # V3 重构后返回的键名是 description 而不是 caption
+                data = result.get('data', {})
+                caption_text = data.get('description', data.get('caption', '')).strip()
                 if not caption_text:
                     error_msg = 'API returned empty result'
                     log_error(TASK_IMAGE_CAPTION, request_id, error_msg, source=SOURCE_NODE)

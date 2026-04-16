@@ -417,15 +417,19 @@ class VisionService(OpenAICompatibleService):
                 base_url = VisionService.get_provider_base_url(provider, custom_provider_config if custom_provider else None)
             
             # 构建消息（图像格式）
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": system_prompt},
-                        {"type": "image_url", "image_url": {"url": processed_image}}
-                    ]
-                }
-            ]
+            # 关键修复(BUG-01): system_prompt 独立作为 system role 发送
+            # Zhipu GLM-4V 等严格服务商要求 system/user role 严格分离
+            # user content array 仅包含简短的任务触发词和图片 URL
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Please analyze this image."},
+                    {"type": "image_url", "image_url": {"url": processed_image}}
+                ]
+            })
             
             # 检查disable_thinking、enable_advanced_params和filter_thinking_output配置
             from ..config_manager import config_manager
@@ -618,11 +622,16 @@ class VisionService(OpenAICompatibleService):
                 base_url = VisionService.get_provider_base_url(provider, custom_provider_config if custom_provider else None)
             
             # 构建多图消息
-            content = [{"type": "text", "text": system_prompt}]
-            for img in processed_images:
-                content.append({"type": "image_url", "image_url": {"url": img}})
+            # 关键修复(BUG-01): system_prompt 独立作为 system role 发送
+            # 多图 user content array 仅包含简短指令和所有图片 URL
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
             
-            messages = [{"role": "user", "content": content}]
+            multi_content = [{"type": "text", "text": "Please analyze these images."}]
+            for img in processed_images:
+                multi_content.append({"type": "image_url", "image_url": {"url": img}})
+            messages.append({"role": "user", "content": multi_content})
             
             # 检查disable_thinking、enable_advanced_params和filter_thinking_output配置
             from ..config_manager import config_manager

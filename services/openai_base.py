@@ -11,7 +11,8 @@ from typing import Optional, Dict, Any, List, Callable
 from .core import BaseAPIService, HTTPClientPool
 from ..utils.common import (
     format_api_error, ProgressBar, log_complete, log_error,
-    PREFIX, PROCESS_PREFIX, WARN_PREFIX, ERROR_PREFIX, format_elapsed_time
+    PREFIX, PROCESS_PREFIX, WARN_PREFIX, ERROR_PREFIX, format_elapsed_time,
+    TASK_IMAGE_CAPTION, TASK_VIDEO_CAPTION
 )
 from .thinking_control import build_thinking_suppression
 import re
@@ -105,10 +106,12 @@ class OpenAICompatibleService(BaseAPIService):
             
         filtered = payload.copy()
         
-        # Level 1: 移除思维链参数
+        # Level 1: 移除思维链参数 + response_format
+        # 注：response_format 在 Zhipu GLM-4V 等严格服务商上会触发 400，Level-1 同步移除
         thinking_keys = [
             "thinking", "enable_thinking", "reasoning_effort", 
-            "reasoning", "thinking_level", "think"
+            "reasoning", "thinking_level", "think",
+            "response_format",  # BUG-02 修复：Level-1 一并移除，防止部分服务商拒绝该字段
         ]
         for k in thinking_keys:
             filtered.pop(k, None)
@@ -193,12 +196,23 @@ class OpenAICompatibleService(BaseAPIService):
                 "stream": True
             }
             
-            # 仅在用户开启"启用高级参数"时才发送 temperature、top_p、max_tokens
-            if enable_advanced_params:
+            # 视觉任务(图像/视频反推)对于某些模型严格要求带有 max_tokens，否则会触发 openai_error，兼容 V1
+            is_vision_task = task_type in [TASK_IMAGE_CAPTION, TASK_VIDEO_CAPTION] if task_type else False
+            
+            # 仅在用户开启"启用高级参数"时才发送 temperature、top_p、max_tokens（视觉任务强制发送）
+            if enable_advanced_params or is_vision_task:
                 initial_payload["temperature"] = temperature
                 initial_payload["top_p"] = top_p
-                initial_payload["max_tokens"] = max_tokens
+                if is_vision_task and not enable_advanced_params:
+                    # BUG-07 修复：视觉任务强制发送 max_tokens 时，使用保守上限
+                    # 部分中转站（如 Gemini Flash via 代理）的 max_tokens 上限为 1024-1500
+                    # 采用 min(max_tokens, 1500) 作为兜底，降低兼容性问题
+                    initial_payload["max_tokens"] = min(max_tokens, 1500)
+                else:
+                    initial_payload["max_tokens"] = max_tokens
+
             
+
             # 添加思维链控制参数
             if thinking_extra:
                 initial_payload.update(thinking_extra)
@@ -288,6 +302,7 @@ class OpenAICompatibleService(BaseAPIService):
                             
                             full_content = ""
                             reasoning_content = ""
+                            stream_error = None  # 用于捕获流内错误
                             
                             async for line in response.aiter_lines():
                                 # 此处的循环检查依然保留，作为双重保险
@@ -302,6 +317,15 @@ class OpenAICompatibleService(BaseAPIService):
                                     chunk = json.loads(line)
                                     # --- 调试日志 (2级): 输出原始流式数据 ---
                                     # print(f"[DEBUG-2] Chunk: {line[:200]}...", flush=True)
+                                    
+                                    # 关键修复：检测流内错误（部分代理以HTTP 200+SSE方式返回错误）
+                                    if chunk.get('error'):
+                                        err = chunk['error']
+                                        if isinstance(err, dict):
+                                            stream_error = err.get('message', str(err))
+                                        else:
+                                            stream_error = str(err)
+                                        break  # 立即中止流读取
                                     
                                     if chunk.get('choices'):
                                         delta = chunk['choices'][0].get('delta', {})
@@ -320,8 +344,36 @@ class OpenAICompatibleService(BaseAPIService):
                                             if stream_callback: stream_callback(content)
                                             pbar.set_generating(len(full_content))
                                             pbar.update(len(full_content))
-                                except:
+                                except json.JSONDecodeError:
+                                    continue  # 非 JSON 行（如注释、空行），正常跳过
+                                except asyncio.CancelledError:
+                                    raise  # 必须重新抛出，不能被吐掉
+                                except Exception as chunk_err:
+                                    # 其他异常：记录警告后继续，避免因单块错误中断整个流
+                                    print(f"\n{WARN_PREFIX} SSE 块解析异常: {chunk_err}", flush=True)
                                     continue
+                            
+                            # 如果流中检测到错误，动态判断是否应该触发降级重试
+                            if stream_error:
+                                # BUG-05 修复: 部分代理（xFlow/Grok等）以 HTTP 200+SSE error 返回参数错误时
+                                # 应当触发降级重试，而非直接永久失败
+                                _RETRYABLE_STREAM_ERROR_KEYWORDS = [
+                                    "unsupported", "invalid parameter", "invalid_request",
+                                    "unknown field", "extra inputs", "not supported",
+                                    "unrecognized", "unexpected", "disallowed",
+                                    "does not support"
+                                ]
+                                stream_error_lower = stream_error.lower()
+                                is_retryable_stream_error = any(
+                                    kw in stream_error_lower
+                                    for kw in _RETRYABLE_STREAM_ERROR_KEYWORDS
+                                )
+                                return {
+                                    "success": False,
+                                    "error": stream_error,
+                                    "status_code": 200,  # HTTP层面成功，业务层面失败
+                                    "should_retry": is_retryable_stream_error  # 动态判断是否应该降级重试
+                                }
                             
                             final_content = full_content
                             if reasoning_content:
@@ -506,10 +558,13 @@ class OpenAICompatibleService(BaseAPIService):
     def _sanitize_config_str(s: str) -> str:
         """
         清理配置字符串中的非法字符（如空格、引号、不可见字符等）
-        防止因复制粘贴导致的请求失败
+        防止因复制粘贴导致的请求失败。
+        
+        关键修复：传入 None 或非字符串时统一返回空字符串 ""，
+        避免后续拼接产生 "Bearer None" 等无效认证头。
         """
         if not s or not isinstance(s, str):
-            return s
+            return ""  # 统一返回空字符串，不返回 None
         # 1. 移除两端空格和常见引号
         s = s.strip().strip('"').strip("'")
         # 2. 移除常见的 Unicode 干扰字符（如 \u2026 省略号）
