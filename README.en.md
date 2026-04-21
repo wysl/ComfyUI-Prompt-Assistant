@@ -29,7 +29,6 @@
 
 **Fixes:**
 * **Video Caption Fix**: Fixed an issue where certain models (e.g., Qwen3.5-Plus) were incorrectly identified as not supporting multi-image analysis. Added intelligent frame-limit inference and automatic truncation.
-* **VIDEO Port Compatibility**: Restored compatibility for the `VIDEO` type (e.g., outputs from VHS nodes) in Video Caption nodes.
 * **Subgraph Mounting Optimization**: Fixed assistant initialization and stability on Subgraph nodes across Node 2.0 (Vue) and LiteGraph modes.
 
 </details>
