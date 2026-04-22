@@ -369,7 +369,7 @@ class LLMService(OpenAICompatibleService):
             disable_thinking_enabled = service.get('disable_thinking', True) if service else True
             
             # 始终调用 build_thinking_suppression，传递 disable_thinking 参数
-            _thinking_extra = build_thinking_suppression(provider, model, disable_thinking=disable_thinking_enabled)
+            _thinking_extra = build_thinking_suppression(service.get('type', provider) if service else provider, model, disable_thinking=disable_thinking_enabled)
             thinking_disabled = _thinking_extra is not None and disable_thinking_enabled
             model_display = format_model_with_thinking(model, thinking_disabled)
 
@@ -612,7 +612,7 @@ class LLMService(OpenAICompatibleService):
                 disable_thinking_enabled = service.get('disable_thinking', True)
                 enable_advanced_params = service.get('enable_advanced_params', False)
                 filter_thinking_output = service.get('filter_thinking_output', True)
-                _ollama_thinking_extra = build_thinking_suppression(provider, model) if disable_thinking_enabled else None
+                _ollama_thinking_extra = build_thinking_suppression(service.get('type', provider) if service else provider, model) if disable_thinking_enabled else None
                 
                 # 统一计算 native_base (确保移除 /v1 和末尾斜杠)
                 native_base = base_url.rstrip('/')

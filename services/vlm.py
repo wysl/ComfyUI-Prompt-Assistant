@@ -364,7 +364,7 @@ class VisionService(OpenAICompatibleService):
                 # 读取 Ollama 服务的配置
                 enable_advanced_params = service.get('enable_advanced_params', False)
                 filter_thinking_output = service.get('filter_thinking_output', True)
-                _ollama_thinking_extra = build_thinking_suppression(provider, model) if disable_thinking_enabled else None
+                _ollama_thinking_extra = build_thinking_suppression(service.get('type', provider), model) if disable_thinking_enabled else None
                 
                 # 提取纯base64
                 b64 = processed_image.split(',')[1] if ',' in processed_image else processed_image
@@ -566,7 +566,7 @@ class VisionService(OpenAICompatibleService):
                 disable_thinking_enabled = service.get('disable_thinking', True)
                 enable_advanced_params = service.get('enable_advanced_params', False)
                 filter_thinking_output = service.get('filter_thinking_output', True)
-                _ollama_thinking_extra = build_thinking_suppression(provider, model) if disable_thinking_enabled else None
+                _ollama_thinking_extra = build_thinking_suppression(service.get('type', provider), model) if disable_thinking_enabled else None
                 
                 # 提前计算auto_unload配置
                 native_base = base_url[:-3] if base_url.endswith('/v1') else (base_url or 'http://localhost:11434')
