@@ -28,10 +28,7 @@
 * **V3 Architecture Upgrade**: Fully refactored node backend to align with ComfyUI V3 API standards for enhanced stability and performance.
 
 **Fixes:**
-* **Video Caption Fix**: Fixed an issue where certain models (e.g., Qwen3.5-Plus) were incorrectly identified as not supporting multi-image analysis. Added intelligent frame-limit inference and automatic truncation.
-* **Ollama Fix**: Fixed empty results for Qwen3.5 and other thinking models on Ollama caused by missing `think` parameter.
-* **VIDEO Input Compatibility Fix**: Fixed an error where VIDEO-type port input (e.g., native ComfyUI V3 video nodes) could not be recognized by the video caption node, causing "No video frames provided" errors.
-* **Ollama Custom Service VLM Fix**: Fixed missing `think` parameter injection when the Ollama service ID is non-default, which caused Qwen3-series VLM models to return empty results. Also fixed `thinking` field contamination in the streaming response parser.
+* **Ollama Request Optimization & Fixes**: Optimized Ollama request logic with smart routing (`base_url` without `/v1` uses Native API, with `/v1` uses OpenAI-compatible API). Fixed crashes where certain models returned empty content due to streaming filter logic issues.
 * **Subgraph Mounting Optimization**: Fixed assistant initialization and stability on Subgraph nodes across Node 2.0 (Vue) and LiteGraph modes.
 
 </details>
