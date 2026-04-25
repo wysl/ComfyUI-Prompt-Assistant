@@ -773,7 +773,7 @@ class ConfigManager:
             "base_url": service.get('base_url', ''),
             "api_key": api_key,
             "temperature": target_model.get('temperature', 0.7),
-            "max_tokens": target_model.get('max_tokens', 1024),
+            "max_tokens": target_model.get('max_tokens', 4096),
             "top_p": target_model.get('top_p', 0.9),
             "auto_unload": service.get('auto_unload', True) if service.get('type') == 'ollama' else None,
             "providers": {}  # v2.0中不再使用此字段
@@ -787,7 +787,7 @@ class ConfigManager:
             "base_url": "",
             "api_key": "",
             "temperature": 0.7,
-            "max_tokens": 1024,
+            "max_tokens": 4096,
             "top_p": 0.9,
             "providers": {}
         }
@@ -1599,7 +1599,7 @@ class ConfigManager:
     # --- 模型管理方法 ---
     
     def add_model_to_service(self, service_id: str, model_type: str, model_name: str, 
-                            temperature: float = 0.7, top_p: float = 0.9, max_tokens: int = 1024):
+                            temperature: float = 0.7, top_p: float = 0.9, max_tokens: int = 4096):
         """添加模型到服务商"""
         try:
             config = self.load_config()

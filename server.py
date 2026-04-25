@@ -453,7 +453,7 @@ async def add_model_to_service_api(request):
         model_name = data.get('model_name')
         temperature = data.get('temperature', 0.7)
         top_p = data.get('top_p', 0.9)
-        max_tokens = data.get('max_tokens', 1024)
+        max_tokens = data.get('max_tokens', 4096)
         
         if not model_type or not model_name:
             return web.json_response({

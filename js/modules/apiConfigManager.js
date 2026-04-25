@@ -1515,7 +1515,7 @@ class APIConfigManager {
                 maxTokensInput.input.min = '1';
                 maxTokensInput.input.max = '8192';
                 maxTokensInput.input.step = '1';
-                maxTokensInput.input.value = selectedModel.max_tokens ?? 1024;
+                maxTokensInput.input.value = selectedModel.max_tokens ?? 4096;
                 maxTokensInput.input.dataset.fieldName = 'max_tokens';
                 maxTokensInput.group.style.width = '135px';
                 formContainer.appendChild(maxTokensInput.group);
@@ -1720,7 +1720,7 @@ class APIConfigManager {
                     model_name: modelName,
                     temperature: 0.7,
                     top_p: 0.9,
-                    max_tokens: 1024
+                    max_tokens: 4096
                 })
             });
 
@@ -1746,7 +1746,7 @@ class APIConfigManager {
                 is_default: updatedList.length === 0,
                 temperature: 0.7,
                 top_p: 0.9,
-                max_tokens: 1024
+                max_tokens: 4096
             });
 
             // 移除空提示
