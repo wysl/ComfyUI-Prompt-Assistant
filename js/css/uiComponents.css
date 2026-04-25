@@ -1178,7 +1178,7 @@
     display: inline-flex;
     align-items: center;
     padding: 6px 10px;
-    background: var(--p-listbox-option-selected-background);
+    background: var(--interface-menu-component-surface-selected);
     color: var(--p-listbox-option-selected-color);
     border-radius: 10px;
     font-size: 13px;

@@ -365,5 +365,7 @@
   "反推提示词（中文）": "Inst. de description (CH)",
   "反推提示词（英文）": "Inst. de description (EN)",
   "帧数已截断": "⚠️ Images tronquées",
-  "帧数截断详情": "Le modèle supporte max {max} images, {truncated} image(s) ignorée(s)"
+  "帧数截断详情": "Le modèle supporte max {max} images, {truncated} image(s) ignorée(s)",
+  "建议不要在地址后方添加 /v1。不加 /v1 会走原生 Ollama API，加了 /v1 则会走 OpenAI 兼容请求格式。": "Il est recommandé de ne pas ajouter /v1 à la fin de l’adresse sauf si nécessaire. Sans /v1, l’API native d’Ollama est utilisée ; avec /v1, le format de requête compatible OpenAI est utilisé.",
+  "建议优先选择非思考模型或指令型（-instruct）模型，以减少思维链输出、截断和响应不稳定的问题。": "Privilégiez les modèles sans raisonnement ou les modèles orientés instructions (-instruct) afin de réduire la sortie de chaîne de pensée, les coupures et les réponses instables."
 }
