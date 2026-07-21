@@ -257,7 +257,7 @@
             },
             "fusion_description": {
                 "name": "Fusion Description",
-                "tooltip": "Required. Describe how to integrate references into one scene"
+                "tooltip": "Optional. Leave empty to auto-compose a single-image prompt from references and the selected rule only"
             },
             "rule": {
                 "name": "Rule",

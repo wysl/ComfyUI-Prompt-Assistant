@@ -43,13 +43,15 @@ DEFAULT_FUSION_RULE = """Role
 - 而是写出最终那一张图里真实发生的画面
 
 最高指令
-1. 用户意图优先：用户描述决定最终画面如何整合；参考图只提供可复用素材。
+1. 用户意图优先：若提供了用户描述，则用户描述决定最终画面如何整合；若用户描述为空，则仅根据参考图自动构思一个合理、完整、可生成的单画面。
 2. 输出必须是一个统一完整的画面描述，读起来像在描述同一张已完成的图片。
 3. 禁止在最终输出中出现任何参考图编号或来源标签，包括但不限于：图1、图2、图3、图4、Image 1、Image 2、参考图1、来自图1、把图1的、图2的。
 4. 智能补全：若用户要求 A 参考图中的人物去做 B 参考图中的动作，但 A 本身缺少完成该动作所需的物件/姿态/场景支撑，必须从 B 或其他参考图中自然补上这些配套元素，并写进最终画面。
 5. 解决冲突：参考图互相矛盾时，以用户意图为准，统一透视、光源、色温、风格和空间关系。
+   若没有用户意图，则以主体完整性和画面合理性为准，优先保留最清晰的主体，并自然吸收其他参考图的动作、道具、场景或光影。
 6. 只输出最终提示词正文：不要解释过程，不要标题，不要分点，不要写素材归属清单。
 7. 语言自适应：用户中文则中文输出，用户英文则英文输出。
+   若用户描述为空，默认中文输出。
 
 写作要求
 - 直接描述人物、服装、动作、道具、场景、光影、氛围、构图
@@ -129,10 +131,10 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "fusion_description",
                     multiline=True,
                     default="",
-                    placeholder="Describe how to integrate these images into one scene",
+                    placeholder="Optional. Leave empty to auto-compose from reference images only",
                     tooltip=(
-                        "Required. Describe the final single-image composition, e.g. "
-                        "'Put the person from image 1 into the room from image 2, wearing outfit from image 3'."
+                        "Optional. Describe how to integrate the references into one scene. "
+                        "If empty, the selected rule will auto-compose a single-image prompt from the reference images only."
                     ),
                 ),
                 io.Combo.Input(
@@ -385,8 +387,8 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             f"{rule_content.strip()}\n\n"
             f"[输入参考图说明]\n共 {image_count} 张，按顺序提供。\n{ref_lines}\n\n"
             f"[输出风格偏好]\n{style_hint}\n\n"
-            f"[用户希望整合到一张图内的画面描述]\n{fusion_description.strip()}\n\n"
-            "请综合以上参考图与用户描述，输出最终融合提示词。\n"
+            f"{cls._format_user_intent_block(fusion_description)}\n\n"
+            "请综合以上参考图与用户意图，输出最终融合提示词。\n"
             "再次强调：最终正文必须是流畅完整的单画面描述；\n"
             "严禁出现‘图1/图2/Image 1/Image 2/参考图1’等字样；\n"
             "若需要借用某张参考图的动作/道具/场景，请直接写成最终画面里的元素，不要标注来源。"
@@ -395,8 +397,26 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
     @classmethod
     def _build_image_roles_text(cls, image_count: int, fusion_description: str) -> str:
         lines = [f"Image {i}: reference image {i}" for i in range(1, image_count + 1)]
-        lines.append(f"User intent: {fusion_description.strip()}")
+        intent = (fusion_description or "").strip()
+        lines.append(
+            f"User intent: {intent}" if intent else "User intent: (empty, auto-compose from references)"
+        )
         return "\n".join(lines)
+
+    @classmethod
+    def _format_user_intent_block(cls, fusion_description: str) -> str:
+        intent = (fusion_description or "").strip()
+        if intent:
+            return (
+                "[用户希望整合到一张图内的画面描述]\n"
+                f"{intent}"
+            )
+        return (
+            "[用户希望整合到一张图内的画面描述]\n"
+            "（空）用户未提供额外描述。\n"
+            "请仅根据参考图自动构思一个合理、完整、可直接用于生图的单画面。\n"
+            "优先保留最清晰的主体，并自然吸收其他参考图中的动作、道具、场景或光影，使最终画面自洽。"
+        )
 
     @classmethod
     def _sanitize_fusion_prompt(cls, prompt: str) -> str:
@@ -447,12 +467,6 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
 
         try:
             fusion_description = (fusion_description or "").strip()
-            if not fusion_description:
-                raise ValueError(
-                    "fusion_description is required. "
-                    "Describe how to integrate the reference images into one scene."
-                )
-
             batch = cls._collect_images(images, image_1, image_2, image_3, image_4)
             if batch.shape[0] < 2:
                 raise ValueError("Multi-image fusion needs at least 2 images.")
