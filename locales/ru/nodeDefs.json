@@ -230,5 +230,77 @@
                 "tooltip": "Сгенерированная креативная инструкция"
             }
         }
+    },
+    "MultiImageFusionNode": {
+        "display_name": "✨Multi-Image Fusion Prompt",
+        "description": "Build one composition prompt from multiple reference images and a fusion description (not pixel blending)",
+        "inputs": {
+            "images": {
+                "name": "Images Batch",
+                "tooltip": "Preferred IMAGE batch, ordered as Image 1..N"
+            },
+            "image_1": {
+                "name": "Image 1",
+                "tooltip": "Optional single image used as Image 1 when batch is empty"
+            },
+            "image_2": {
+                "name": "Image 2",
+                "tooltip": "Optional single image used as Image 2"
+            },
+            "image_3": {
+                "name": "Image 3",
+                "tooltip": "Optional single image used as Image 3"
+            },
+            "image_4": {
+                "name": "Image 4",
+                "tooltip": "Optional single image used as Image 4"
+            },
+            "fusion_description": {
+                "name": "Fusion Description",
+                "tooltip": "Required. Describe how to integrate references into one scene"
+            },
+            "rule": {
+                "name": "Rule",
+                "tooltip": "Preset fusion rule"
+            },
+            "custom_rule": {
+                "name": "Custom Rule",
+                "tooltip": "Enable custom rule content"
+            },
+            "custom_rule_content": {
+                "name": "Custom Rule Content",
+                "tooltip": "Custom rule text"
+            },
+            "output_style": {
+                "name": "Output Style",
+                "tooltip": "Natural language / Tags / Edit instruction"
+            },
+            "vlm_service": {
+                "name": "VLM Service",
+                "tooltip": "Select vision service and model"
+            },
+            "ollama_auto_unload": {
+                "name": "Auto Unload",
+                "tooltip": "Unload Ollama model after generation"
+            },
+            "seed": {
+                "name": "Seed",
+                "tooltip": "Change to force re-execution"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Fusion Prompt",
+                "tooltip": "Single-image composition prompt"
+            },
+            "1": {
+                "name": "Image Roles",
+                "tooltip": "Image 1..N and user intent summary"
+            },
+            "2": {
+                "name": "Preview Images",
+                "tooltip": "Reference images actually sent to the model"
+            }
+        }
     }
 }

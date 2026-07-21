@@ -230,5 +230,77 @@
                 "tooltip": "生成的创意转换指令"
             }
         }
+    },
+    "MultiImageFusionNode": {
+        "display_name": "✨多图融合提示词",
+        "description": "根据多张参考图和融合描述，生成整合到一张图的提示词（非像素融图）",
+        "inputs": {
+            "images": {
+                "name": "图像批次",
+                "tooltip": "优先输入：IMAGE batch，按顺序作为图1..N"
+            },
+            "image_1": {
+                "name": "图像1",
+                "tooltip": "可选单图输入，作为图1（当批次为空时使用）"
+            },
+            "image_2": {
+                "name": "图像2",
+                "tooltip": "可选单图输入，作为图2"
+            },
+            "image_3": {
+                "name": "图像3",
+                "tooltip": "可选单图输入，作为图3"
+            },
+            "image_4": {
+                "name": "图像4",
+                "tooltip": "可选单图输入，作为图4"
+            },
+            "fusion_description": {
+                "name": "融合描述",
+                "tooltip": "必填。描述希望如何把多张图整合到同一画面"
+            },
+            "rule": {
+                "name": "规则预设",
+                "tooltip": "选择多图融合规则"
+            },
+            "custom_rule": {
+                "name": "自定义规则",
+                "tooltip": "启用下方自定义规则"
+            },
+            "custom_rule_content": {
+                "name": "自定义规则内容",
+                "tooltip": "自定义规则正文"
+            },
+            "output_style": {
+                "name": "输出风格",
+                "tooltip": "自然语言 / Tags / 编辑指令"
+            },
+            "vlm_service": {
+                "name": "视觉服务",
+                "tooltip": "选择视觉服务和模型"
+            },
+            "ollama_auto_unload": {
+                "name": "自动释放显存",
+                "tooltip": "生成后自动释放 Ollama 模型"
+            },
+            "seed": {
+                "name": "随机种子",
+                "tooltip": "变更可强制重新执行"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "融合提示词",
+                "tooltip": "整合后的单图提示词"
+            },
+            "1": {
+                "name": "图像角色",
+                "tooltip": "图1..N 与用户意图摘要"
+            },
+            "2": {
+                "name": "预览图像",
+                "tooltip": "实际送入模型的参考图预览"
+            }
+        }
     }
 }

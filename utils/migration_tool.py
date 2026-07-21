@@ -644,7 +644,7 @@ class MigrationTool:
         modified = False
         
         # 需要处理的规则类型
-        prompt_types = ['expand_prompts', 'vision_prompts', 'video_prompts']
+        prompt_types = ['expand_prompts', 'vision_prompts', 'video_prompts', 'fusion_prompts']
         
         for prompt_type in prompt_types:
             if prompt_type not in system_prompts_data:
@@ -677,7 +677,7 @@ class MigrationTool:
         modified = False
         
         # 需要处理的规则类型
-        prompt_types = ['expand_prompts', 'vision_prompts', 'video_prompts']
+        prompt_types = ['expand_prompts', 'vision_prompts', 'video_prompts', 'fusion_prompts']
         
         for prompt_type in prompt_types:
             if prompt_type not in system_prompts_data:
@@ -716,7 +716,7 @@ class MigrationTool:
         modified = False
         
         # 需要处理的规则类型
-        prompt_types = ['expand_prompts', 'vision_prompts', 'video_prompts', 'translate_prompts']
+        prompt_types = ['expand_prompts', 'vision_prompts', 'video_prompts', 'fusion_prompts', 'translate_prompts']
         
         for prompt_type in prompt_types:
             # 检查模板中是否有该类型

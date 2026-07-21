@@ -1,6 +1,6 @@
 [project]
 name = "prompt-assistant"
-version = "2.0.6"
+version = "2.1.0"
 description = "Prompt Assistant is a versatile, all-in-one prompt utility that offers one-click access to any online or local LLM. It features seamless prompt translation, refinement, expansion, and image/video-to-prompt reverse engineering, plus prompt collections for instant invocation.提示词小助手可以一键调用任意在线以及本地大模型。实现提示词翻译、润色扩写、图片视频反推等功能。同时支持提示词收藏一键调用等功能。是一个全能型提示词插件。"
 readme = "README.md"
 license = {text = "GNU General Public License v3"}

@@ -58,6 +58,7 @@ TASK_TRANSLATE = "翻译"
 TASK_EXPAND = "提示词优化"
 TASK_IMAGE_CAPTION = "图像反推"
 TASK_VIDEO_CAPTION = "视频反推"
+TASK_MULTI_IMAGE_FUSION = "多图融合"
 
 
 # ==================== 请求来源常量 ====================

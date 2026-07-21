@@ -581,8 +581,15 @@ class VisionService(OpenAICompatibleService):
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             
-            multi_content = [{"type": "text", "text": "Please analyze these images."}]
-            for img in processed_images:
+            multi_content = [{
+                "type": "text",
+                "text": (
+                    f"There are {len(processed_images)} reference images below, ordered as Image 1..Image {len(processed_images)}. "
+                    "Use these labels when combining them into one final scene/prompt."
+                )
+            }]
+            for idx, img in enumerate(processed_images, 1):
+                multi_content.append({"type": "text", "text": f"Image {idx}:"})
                 multi_content.append({"type": "image_url", "image_url": {"url": img}})
             messages.append({"role": "user", "content": multi_content})
             
