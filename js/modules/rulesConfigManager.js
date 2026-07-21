@@ -493,6 +493,44 @@ class RulesConfigManager {
     }
 
     /**
+     * 创建多图融合规则标签页内容
+     * @returns {HTMLElement} 标签页内容元素
+     */
+    _createFusionTabPane() {
+        const pane = document.createElement('div');
+        pane.className = 'tab-pane';
+        pane.dataset.tab = 'fusion';
+        pane.style.display = 'none';
+        pane.style.padding = '16px';
+
+        // 创建规则列表容器
+        const listContainer = document.createElement('div');
+        listContainer.className = 'prompt-list-container fusion-prompt-list-container';
+
+        const listHeader = document.createElement('div');
+        listHeader.className = 'prompt-list-header';
+        listHeader.innerHTML = `
+            <div class="prompt-list-cell status-cell">状态</div>
+            <div class="prompt-list-cell name-cell">规则名称</div>
+            <div class="prompt-list-cell content-cell">规则内容</div>
+            <div class="prompt-list-cell action-cell">操作</div>
+        `;
+        this._addHeaderResizers(listHeader);
+
+        const scrollList = document.createElement('div');
+        scrollList.className = 'prompt-scroll-list';
+
+        listContainer.appendChild(listHeader);
+        listContainer.appendChild(scrollList);
+        pane.appendChild(listContainer);
+
+        // 存储列表引用
+        this.fusionScrollList = scrollList;
+
+        return pane;
+    }
+
+    /**
      * 加载系统规则配置
      */
     async _loadSystemPrompts() {
