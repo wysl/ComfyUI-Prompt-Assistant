@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1 align="center">ComfyUI Prompt Assistant ✨ Prompt Assistant V2.0</h1>
+<h1 align="center">ComfyUI Prompt Assistant ✨ Prompt Assistant V2.1</h1>
 
 <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/yawiii/ComfyUI-Prompt-Assistant">
 <a href="https://space.bilibili.com/520680644"><img alt="bilibili" src="https://img.shields.io/badge/Detailed Video Tutorial-blue?style=flat&logo=bilibili&logoColor=2300A5DC&labelColor=%23FFFFFF&color=%2307A3D7"></a>
@@ -17,11 +17,21 @@
 
 <h4 align="center">🎉🎉 A brand new version of Prompt Assistant is online! Stronger functions, faster response! Optimized for ComfyUI Node 2.0! 🎉🎉</h4>
 
-> Supports cloud-based LLM APIs and local Ollama models. Provides translation for prompt nodes, Markdown nodes, and node documentation; features prompt enhancement, image/video captioning, common tag collection, and history logs. An all-in-one prompt assistant plugin!
+> Supports cloud-based LLM APIs and local Ollama models. Provides translation for prompt nodes, Markdown nodes, and node documentation; features prompt enhancement, image/video captioning, multi-image fusion prompting, common tag collection, and history logs. An all-in-one prompt assistant plugin!
 
 ## **📣 Updates**
 
 <details open>
+<summary><strong>[2026-07-21] 🔥 V2.1.2</strong></summary>
+
+**Changes:**
+* **Multi-Image Fusion Prompt Node**: Added a node that takes multiple reference images, an optional fusion description, and a preset rule, then outputs one composition prompt for a single final image (not pixel blending).
+* **Rule & Output Polish**: Fusion output is a fluent full-scene prompt; source labels like "Image 1/Image 2" are forbidden so downstream generators are not confused.
+* **Optional Fusion Description**: The fusion description can be left empty; the selected rule can auto-compose from reference images only.
+
+</details>
+
+<details>
 <summary><strong>[2026-04-21] 🔥 V2.0.6</strong></summary>
 
 **Changes:**
@@ -266,6 +276,9 @@
 
 ![Captioning](https://github.com/user-attachments/assets/3713ddc5-4e2e-4412-88ee-077d86f21b99)
 
+#### 🧩 Multi-Image Fusion Prompt
+`Provide multiple reference images, optionally with a fusion description, or use a preset rule only; outputs one complete single-image prompt (not pixel blending, and without "Image 1/Image 2" source labels).`
+
 #### 🔖 Tags, Phrase Presets & Collection
 `Collect common tags, phrases, and Lora triggers for quick insertion. Supports collection, custom sorting, and multi-set switching.`
 
@@ -305,6 +318,10 @@ Category: `✨Prompt Assistant`
 `✨Prompt Assistant → Video Caption Prompt`
 <img width="1700" height="1080" alt="Video Caption Node" src="https://github.com/user-attachments/assets/0143096b-24d5-4308-82ff-e0a99144db0b" />
 <img width="1700" height="1102" alt="Frame Picker Tool" src="https://github.com/user-attachments/assets/96c2bd08-b26c-4df1-b32c-be8e20328c97" />
+
+#### **🔹 Multi-Image Fusion Prompt Node**
+`✨Prompt Assistant → Multi-Image Fusion Prompt`
+`Takes multiple reference images with an optional fusion description and preset rule, then outputs one composition prompt for a single final image. Supports IMAGE batch or image_1~image_4 inputs; fusion description can be empty. Output is a fluent full-scene prompt without source labels like "Image 1/Image 2".`
 
 ## **📦 Installation**
 

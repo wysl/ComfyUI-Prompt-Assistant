@@ -1,7 +1,7 @@
 
 <div align="center">
 
-<h1 align="center">ComfyUI Prompt Assistant✨提示词小助手V2.0</h1>
+<h1 align="center">ComfyUI Prompt Assistant✨提示词小助手V2.1</h1>
 
 
 <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/yawiii/ComfyUI-Prompt-Assistant">
@@ -19,12 +19,22 @@
 
 <h4 align="center">🎉🎉全新版本的提示词小助手上线啦！功能更强，响应速度更快！适配ComfyUI node2.0！🎉🎉</h4>
 
-> 支持调用云端大模型API、本地Ollama大模型。实现提示词、Markdown节点、节点文档翻译；提示词优化、图像反推和视频反推；常用标签收藏、历史记录等功能。是一个全能all in one的提示词插件！
+> 支持调用云端大模型API、本地Ollama大模型。实现提示词、Markdown节点、节点文档翻译；提示词优化、图像反推、视频反推、多图融合提示词；常用标签收藏、历史记录等功能。是一个全能all in one的提示词插件！
 
 
 ## **📣更新**
 
 <details open>
+<summary><strong>[2026-07-21] 🔥V2.1.2</strong></summary>
+
+**Changes:**
+* **多图融合提示词节点**：新增节点，可输入多张参考图，结合可选的融合描述与规则预设，生成整合到一张图的提示词（不是像素级融图）。
+* **规则与输出优化**：融合结果输出为流畅完整的单画面描述；禁止输出“图1/图2”等来源标签，避免干扰后续生图模型。
+* **融合描述可选**：融合描述可留空，仅使用规则预设和参考图自动融合。
+
+</details>
+
+<details>
 <summary><strong>[2026-04-21] 🔥V2.0.6</strong></summary>
 
 **Changes:**
@@ -293,6 +303,11 @@
 ![反推](https://github.com/user-attachments/assets/3713ddc5-4e2e-4412-88ee-077d86f21b99)
 
 
+#### 🧩多图融合提示词
+
+`输入多张参考图，可填写融合描述，也可直接使用规则预设；输出为整合到一张图的完整提示词（不是像素级融图，且不会输出“图1/图2”来源标签）`
+
+
 #### 🔖标签、短语预设与收藏
 
 `可将常用标签、短语、Lora触发词收集，快速插入。标签可收藏、自定义、排序、并且支持多套标签切换。`
@@ -353,7 +368,10 @@
 <img width="1700" height="1102" alt="选取帧工具" src="https://github.com/user-attachments/assets/96c2bd08-b26c-4df1-b32c-be8e20328c97" />
 
 
+#### **🔹多图融合提示词节点**
+`✨Prompt Assistant → 多图融合提示词`
 
+`输入多张参考图，结合可选的融合描述与规则预设，生成整合到一张图的提示词。支持 IMAGE 批次或 image_1~image_4 单图输入；融合描述可留空。输出为流畅完整的单画面描述，不会包含“图1/图2”等来源标签。`
 
 
 ## **📦 安装方法**
