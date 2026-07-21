@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Dict, List, Tuple
 
 import torch
@@ -32,24 +33,28 @@ from .base import VLMNodeBase
 
 
 DEFAULT_FUSION_RULE = """Role
-你是一位多图融合构图导演，也是高精度提示词工程师。
-你的任务不是分别描述每张图，也不是做像素级融图，而是：
-根据用户提供的多张参考图，以及用户给出的“希望整合到一张图内的画面描述”，
-生成一段可直接用于文生图/图生图模型的融合提示词。
+你是一位多图融合构图导演与提示词工程师。
+输入会提供多张参考图，以及用户希望整合到一张画面中的意图。
+你的任务：把参考图中的有效视觉元素，按用户意图融合成一个完整、流畅、可直接用于生图的单画面提示词。
+
+核心目标
+- 不是分别介绍每张参考图
+- 不是做像素级融图
+- 而是写出最终那一张图里真实发生的画面
 
 最高指令
-1. 用户意图优先：用户文字描述决定最终画面如何整合；参考图只提供可复用的视觉素材。
-2. 必须整合为一张图：输出只能描述一个统一画面，禁止输出多张独立图片的分别说明。
-3. 明确素材归属：写清图1/图2/图3/图4分别贡献了什么（主体、服装、场景、光影、风格、道具、姿态等）。
-4. 解决冲突：当参考图互相矛盾时，以用户描述为准，并自然统一透视、光源、色温和空间关系。
-5. 输出纯净：只输出最终提示词正文，不要解释过程，不要标题，不要编号列表。
-6. 语言自适应：用户用中文描述则输出中文；用户用英文描述则输出英文。
+1. 用户意图优先：用户描述决定最终画面如何整合；参考图只提供可复用素材。
+2. 输出必须是一个统一完整的画面描述，读起来像在描述同一张已完成的图片。
+3. 禁止在最终输出中出现任何参考图编号或来源标签，包括但不限于：图1、图2、图3、图4、Image 1、Image 2、参考图1、来自图1、把图1的、图2的。
+4. 智能补全：若用户要求 A 参考图中的人物去做 B 参考图中的动作，但 A 本身缺少完成该动作所需的物件/姿态/场景支撑，必须从 B 或其他参考图中自然补上这些配套元素，并写进最终画面。
+5. 解决冲突：参考图互相矛盾时，以用户意图为准，统一透视、光源、色温、风格和空间关系。
+6. 只输出最终提示词正文：不要解释过程，不要标题，不要分点，不要写素材归属清单。
+7. 语言自适应：用户中文则中文输出，用户英文则英文输出。
 
-输出要求
-- 先交代统一场景与整体构图
-- 再写清各参考图元素如何进入同一画面
-- 补足光影、材质、空间层次、风格一致性
-- 适合直接喂给绘图模型
+写作要求
+- 直接描述人物、服装、动作、道具、场景、光影、氛围、构图
+- 动作与物件必须配套，不能只写动作不写完成动作所需的东西
+- 画面要连贯自然，像一条完整提示词，而不是拼接说明
 """
 
 
@@ -364,20 +369,27 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         style_hint = {
             "Auto": "根据用户描述与参考图自动选择最适合的提示词风格。",
             "Natural Language": "输出自然语言长描述，适合 Flux / 通用文生图。",
-            "Tags": "输出逗号分隔的标签流，可带适度权重，适合 SD/SDXL。",
-            "Edit Instruction": "输出可执行的图像编辑/合成指令，适合 Kontext / Qwen-Image-Edit 等编辑模型。",
+            "Tags": "输出逗号分隔的标签流，可带适度权重，适合 SD/SDXL。注意标签中也不得出现图1/图2等来源词。",
+            "Edit Instruction": "输出可执行的图像编辑/合成指令，适合 Kontext / Qwen-Image-Edit 等编辑模型。指令中描述最终画面本身，不要写 Image 1/图1 这类来源标签。",
         }.get(style, "根据用户描述与参考图自动选择最适合的提示词风格。")
 
-        role_lines = "\n".join(
-            [f"- 图{i}: 参考图 {i}（Image {i}）" for i in range(1, image_count + 1)]
+        # 仅供模型理解输入顺序；明确禁止写进最终输出
+        ref_lines = "\n".join(
+            [
+                f"- 输入参考图{i}：仅供理解素材，禁止在最终提示词中写‘图{i}’或‘Image {i}’"
+                for i in range(1, image_count + 1)
+            ]
         )
 
         return (
             f"{rule_content.strip()}\n\n"
-            f"[参考图数量]\n共 {image_count} 张，顺序如下：\n{role_lines}\n\n"
+            f"[输入参考图说明]\n共 {image_count} 张，按顺序提供。\n{ref_lines}\n\n"
             f"[输出风格偏好]\n{style_hint}\n\n"
             f"[用户希望整合到一张图内的画面描述]\n{fusion_description.strip()}\n\n"
-            "请综合以上参考图与用户描述，输出最终融合提示词。"
+            "请综合以上参考图与用户描述，输出最终融合提示词。\n"
+            "再次强调：最终正文必须是流畅完整的单画面描述；\n"
+            "严禁出现‘图1/图2/Image 1/Image 2/参考图1’等字样；\n"
+            "若需要借用某张参考图的动作/道具/场景，请直接写成最终画面里的元素，不要标注来源。"
         )
 
     @classmethod
@@ -385,6 +397,33 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         lines = [f"Image {i}: reference image {i}" for i in range(1, image_count + 1)]
         lines.append(f"User intent: {fusion_description.strip()}")
         return "\n".join(lines)
+
+    @classmethod
+    def _sanitize_fusion_prompt(cls, prompt: str) -> str:
+        """Remove source labels that confuse image generators."""
+        if not prompt:
+            return prompt
+
+        text = prompt.strip()
+        patterns = [
+            r"图\s*[1-9]\d*\s*的",
+            r"图\s*[1-9]\d*",
+            r"参考图\s*[1-9]\d*\s*的",
+            r"参考图\s*[1-9]\d*",
+            r"来自图\s*[1-9]\d*",
+            r"把图\s*[1-9]\d*",
+            r"Image\s*[1-9]\d*\s*'?s",
+            r"Image\s*[1-9]\d*",
+            r"reference image\s*[1-9]\d*",
+            r"from image\s*[1-9]\d*",
+        ]
+        for patt in patterns:
+            text = re.sub(patt, "", text, flags=re.IGNORECASE)
+
+        text = re.sub(r"\s{2,}", " ", text)
+        text = re.sub(r"\s+([，。！？、,.;:!?])", r"\1", text)
+        text = re.sub(r"([，、]){2,}", r"\1", text)
+        return text.strip(" ，,")
 
     @classmethod
     def execute(
@@ -516,6 +555,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     or data.get("result")
                     or ""
                 ).strip()
+                fusion_prompt = cls._sanitize_fusion_prompt(fusion_prompt)
                 if not fusion_prompt:
                     error_msg = "API returned empty result"
                     log_error(TASK_MULTI_IMAGE_FUSION, request_id, error_msg, source=SOURCE_NODE)
