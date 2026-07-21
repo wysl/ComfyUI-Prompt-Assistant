@@ -28,11 +28,13 @@ class RulesConfigManager {
         this.zhVisionPrompts = [];
         this.enVisionPrompts = [];
         this.videoPrompts = [];
+        this.fusionPrompts = [];
         // ---当前激活的规则ID---
         this.activeExpandPromptId = null;
         this.activeZhVisionPromptId = null;
         this.activeEnVisionPromptId = null;
         this.activeVideoPromptId = null;
+        this.activeFusionPromptId = null;
 
         this.isDirty = false;
         this.initialState = null; // 用于存储状态备份
@@ -48,10 +50,12 @@ class RulesConfigManager {
             zhVisionPrompts: JSON.parse(JSON.stringify(this.zhVisionPrompts)),
             enVisionPrompts: JSON.parse(JSON.stringify(this.enVisionPrompts)),
             videoPrompts: JSON.parse(JSON.stringify(this.videoPrompts || [])),
+            fusionPrompts: JSON.parse(JSON.stringify(this.fusionPrompts || [])),
             activeExpandPromptId: this.activeExpandPromptId,
             activeZhVisionPromptId: this.activeZhVisionPromptId,
             activeEnVisionPromptId: this.activeEnVisionPromptId,
             activeVideoPromptId: this.activeVideoPromptId,
+            activeFusionPromptId: this.activeFusionPromptId,
         };
         this.isDirty = false;
         // 标记表单未修改
@@ -71,10 +75,12 @@ class RulesConfigManager {
             this.zhVisionPrompts = JSON.parse(JSON.stringify(this.initialState.zhVisionPrompts));
             this.enVisionPrompts = JSON.parse(JSON.stringify(this.initialState.enVisionPrompts));
             this.videoPrompts = JSON.parse(JSON.stringify(this.initialState.videoPrompts || []));
+            this.fusionPrompts = JSON.parse(JSON.stringify(this.initialState.fusionPrompts || []));
             this.activeExpandPromptId = this.initialState.activeExpandPromptId;
             this.activeZhVisionPromptId = this.initialState.activeZhVisionPromptId;
             this.activeEnVisionPromptId = this.initialState.activeEnVisionPromptId;
             this.activeVideoPromptId = this.initialState.activeVideoPromptId;
+            this.activeFusionPromptId = this.initialState.activeFusionPromptId;
         }
         this.isDirty = false;
     }
@@ -191,6 +197,7 @@ class RulesConfigManager {
             { id: 'zhVision', title: tUI('中文反推'), subtitle: tUI('图像反推中文提示词'), addLabel: tUI('添加中文反推规则') },
             { id: 'enVision', title: tUI('英文反推'), subtitle: tUI('图像反推英文提示词'), addLabel: tUI('添加英文反推规则') },
             { id: 'video', title: tUI('视频反推'), subtitle: tUI('将视频反推提示词'), addLabel: tUI('添加视频反推规则') },
+            { id: 'fusion', title: tUI('多图融合'), subtitle: tUI('多图融合提示词规则'), addLabel: tUI('添加多图融合规则') },
             { id: 'translate', title: tUI('翻译规则'), subtitle: tUI('大模型翻译规则'), addLabel: null }
         ];
 
@@ -233,12 +240,14 @@ class RulesConfigManager {
         const zhVisionPane = this._createVisionTabPane('zhVision', '中文反推规则');
         const enVisionPane = this._createVisionTabPane('enVision', '英文反推规则');
         const videoPane = this._createVideoTabPane();
+        const fusionPane = this._createFusionTabPane();
         const translatePane = this._createTranslateTabPane();
 
         tabContent.appendChild(expandPane);
         tabContent.appendChild(zhVisionPane);
         tabContent.appendChild(enVisionPane);
         tabContent.appendChild(videoPane);
+        tabContent.appendChild(fusionPane);
         tabContent.appendChild(translatePane);
 
         tabContainer.appendChild(tabContent);
@@ -655,6 +664,34 @@ class RulesConfigManager {
                 } else {
                     this.activeVideoPromptId = activeVideoId;
                 }
+
+            // 转换多图融合规则数据
+            this.fusionPrompts = [];
+            const activeFusionId = activePrompts.fusion;
+            if (data.fusion_prompts) {
+                const fusionKeys = Object.keys(data.fusion_prompts);
+                fusionKeys.forEach((key, index) => {
+                    const prompt = data.fusion_prompts[key];
+                    this.fusionPrompts.push({
+                        id: key,
+                        name: prompt.name || key,
+                        tags: prompt.tags || [],
+                        category: prompt.category || '',
+                        showIn: prompt.showIn || ['frontend', 'node'],
+                        content: prompt.content,
+                        isActive: key === activeFusionId,
+                        order: index
+                    });
+                });
+
+                // 如果没有找到激活的多图融合规则，则激活第一个
+                if (!activeFusionId && this.fusionPrompts.length > 0) {
+                    this.fusionPrompts[0].isActive = true;
+                    this.activeFusionPromptId = this.fusionPrompts[0].id;
+                } else {
+                    this.activeFusionPromptId = activeFusionId;
+                }
+            }
             }
 
             // 备份初始状态
@@ -678,7 +715,7 @@ class RulesConfigManager {
      * 渲染规则列表
      */
     _renderPromptLists() {
-        logger.debug(`开始渲染规则列表 | 提示词优化规则:${this.expandPrompts.length}个 | 翻译规则:${this.translatePrompts?.length || 0}个 | 中文反推:${this.zhVisionPrompts.length}个 | 英文反推:${this.enVisionPrompts.length}个`);
+        logger.debug(`开始渲染规则列表 | 提示词优化规则:${this.expandPrompts.length}个 | 翻译规则:${this.translatePrompts?.length || 0}个 | 中文反推:${this.zhVisionPrompts.length}个 | 英文反推:${this.enVisionPrompts.length}个 | 多图融合:${this.fusionPrompts?.length || 0}个`);
 
         // 渲染扩写规则列表
         if (this.expandScrollList) {
@@ -714,6 +751,12 @@ class RulesConfigManager {
         if (this.videoScrollList) {
             this._renderPromptList(this.videoScrollList, this.videoPrompts || [], 'video');
             logger.debug(`渲染视频反推规则列表完成`);
+        }
+
+        // 渲染多图融合规则列表
+        if (this.fusionScrollList) {
+            this._renderPromptList(this.fusionScrollList, this.fusionPrompts || [], 'fusion');
+            logger.debug(`渲染多图融合规则列表完成`);
         }
     }
 
@@ -1021,7 +1064,8 @@ class RulesConfigManager {
                     { value: 'expand', text: '提示词优化' },
                     { value: 'zhVision', text: '反推（中文）' },
                     { value: 'enVision', text: '反推（英文）' },
-                    { value: 'video', text: '视频反推' }
+                    { value: 'video', text: '视频反推' },
+                    { value: 'fusion', text: '多图融合' }
                 ];
                 const typeSelect = createSelectGroup('规则类型', typeOptions, defaultType);
                 typeSelect.group.style.marginBottom = '10px';
@@ -1125,6 +1169,8 @@ class RulesConfigManager {
                     targetArray = this.enVisionPrompts;
                 } else if (type === 'video') {
                     targetArray = this.videoPrompts;
+                } else if (type === 'fusion') {
+                    targetArray = this.fusionPrompts;
                 } else {
                     logger.error(`未知的规则类型: ${type}`);
                     return;
@@ -1158,6 +1204,10 @@ class RulesConfigManager {
                                 originalArray = this.zhVisionPrompts;
                             } else if (defaultType === 'enVision') {
                                 originalArray = this.enVisionPrompts;
+                            } else if (defaultType === 'video') {
+                                originalArray = this.videoPrompts;
+                            } else if (defaultType === 'fusion') {
+                                originalArray = this.fusionPrompts;
                             }
                             const index = originalArray.findIndex(p => p.id === promptId);
                             if (index !== -1) {
@@ -1173,6 +1223,10 @@ class RulesConfigManager {
                                 newId = 'vision_zh_' + name.replace(/\s+/g, '_');
                             } else if (type === 'enVision') {
                                 newId = 'vision_en_' + name.replace(/\s+/g, '_');
+                            } else if (type === 'video') {
+                                newId = 'video_' + name.replace(/\s+/g, '_');
+                            } else if (type === 'fusion') {
+                                newId = 'fusion_' + name.replace(/\s+/g, '_');
                             } else {
                                 newId = this._generateId();
                             }
@@ -1210,6 +1264,8 @@ class RulesConfigManager {
                                     newId = 'vision_en_' + name.replace(/\s+/g, '_');
                                 } else if (type === 'video') {
                                     newId = 'video_' + name.replace(/\s+/g, '_');
+                                } else if (type === 'fusion') {
+                                    newId = 'fusion_' + name.replace(/\s+/g, '_');
                                 } else {
                                     newId = name;
                                 }
@@ -1231,6 +1287,8 @@ class RulesConfigManager {
                         newId = 'vision_en_' + name.replace(/\s+/g, '_');
                     } else if (type === 'video') {
                         newId = 'video_' + name.replace(/\s+/g, '_');
+                    } else if (type === 'fusion') {
+                        newId = 'fusion_' + name.replace(/\s+/g, '_');
                     } else {
                         newId = name;
                     }
@@ -1310,6 +1368,11 @@ class RulesConfigManager {
                 activeIdProperty = 'activeVideoPromptId';
                 configKey = 'video';
                 break;
+            case 'fusion':
+                dataArray = this.fusionPrompts;
+                activeIdProperty = 'activeFusionPromptId';
+                configKey = 'fusion';
+                break;
             default:
                 return;
         }
@@ -1377,6 +1440,9 @@ class RulesConfigManager {
             case 'video':
                 dataArray = this.videoPrompts;
                 break;
+            case 'fusion':
+                dataArray = this.fusionPrompts;
+                break;
             default:
                 return;
         }
@@ -1441,11 +1507,13 @@ class RulesConfigManager {
                 translate_prompts: {},
                 vision_prompts: {},
                 video_prompts: {},
+                fusion_prompts: {},
                 active_prompts: {
                     expand: null,
                     vision_zh: null,
                     vision_en: null,
-                    video: null
+                    video: null,
+                    fusion: null
                 }
             };
 
@@ -1562,8 +1630,33 @@ class RulesConfigManager {
                 logger.debug(`使用实例属性中的视频反推规则ID: ${this.activeVideoPromptId}`);
             }
 
+            // 添加多图融合规则
+            const orderedFusionPrompts = [...(this.fusionPrompts || [])].sort((a, b) => a.order - b.order);
+            orderedFusionPrompts.forEach(prompt => {
+                systemPrompts.fusion_prompts[prompt.id] = {
+                    name: prompt.name,
+                    tags: prompt.tags || [],
+                    category: prompt.category || '',
+                    showIn: prompt.showIn || ['frontend', 'node'],
+                    role: "system",
+                    content: prompt.content
+                };
+
+                // 记录激活的规则ID
+                if (prompt.isActive) {
+                    systemPrompts.active_prompts.fusion = prompt.id;
+                    logger.debug(`保存激活的多图融合规则ID: ${prompt.id}`);
+                }
+            });
+
+            // 如果没有找到激活的多图融合规则，使用实例属性中保存的ID
+            if (!systemPrompts.active_prompts.fusion && this.activeFusionPromptId) {
+                systemPrompts.active_prompts.fusion = this.activeFusionPromptId;
+                logger.debug(`使用实例属性中的多图融合规则ID: ${this.activeFusionPromptId}`);
+            }
+
             // 输出最终的激活状态
-            logger.debug(`最终激活的规则ID: expand=${systemPrompts.active_prompts.expand}, vision_zh=${systemPrompts.active_prompts.vision_zh}, vision_en=${systemPrompts.active_prompts.vision_en}, video=${systemPrompts.active_prompts.video}`);
+            logger.debug(`最终激活的规则ID: expand=${systemPrompts.active_prompts.expand}, vision_zh=${systemPrompts.active_prompts.vision_zh}, vision_en=${systemPrompts.active_prompts.vision_en}, video=${systemPrompts.active_prompts.video}, fusion=${systemPrompts.active_prompts.fusion}`);
 
 
             const response = await fetch(APIService.getApiUrl('/config/system_prompts'), {
@@ -1800,6 +1893,9 @@ class RulesConfigManager {
                 break;
             case 'video':
                 dataArray = this.videoPrompts;
+                break;
+            case 'fusion':
+                dataArray = this.fusionPrompts;
                 break;
             default:
                 return;
