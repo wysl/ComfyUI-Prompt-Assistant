@@ -1072,6 +1072,8 @@ class RulesConfigManager {
                 editData = this.enVisionPrompts.find(p => p.id === promptId);
             } else if (defaultType === 'video') {
                 editData = this.videoPrompts.find(p => p.id === promptId);
+            } else if (defaultType === 'fusion') {
+                editData = this.fusionPrompts.find(p => p.id === promptId);
             }
         }
 
