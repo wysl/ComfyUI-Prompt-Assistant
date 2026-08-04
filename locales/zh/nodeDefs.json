@@ -232,28 +232,20 @@
         }
     },
     "MultiImageFusionNode": {
-        "display_name": "✨多图融合提示词",
-        "description": "根据多张参考图和融合描述，生成整合到一张图的提示词（非像素融图）",
+        "display_name": "✨多媒体参考融合提示词",
+        "description": "根据参考图片生成单图提示词，或根据图片、视频、音频生成 MiniMax H3 Ref2VA 提示词",
         "inputs": {
             "images": {
                 "name": "图像批次",
-                "tooltip": "优先输入：IMAGE batch，按顺序作为图1..N"
+                "tooltip": "IMAGE 批次或 ComfyUI IMAGE 列表，按批次/列表顺序读取全部参考图"
             },
-            "image_1": {
-                "name": "图像1",
-                "tooltip": "可选单图输入，作为图1（当批次为空时使用）"
+            "videos": {
+                "name": "视频批次",
+                "tooltip": "VIDEO 列表/批次，MiniMax H3 模式最多读取3段参考视频"
             },
-            "image_2": {
-                "name": "图像2",
-                "tooltip": "可选单图输入，作为图2"
-            },
-            "image_3": {
-                "name": "图像3",
-                "tooltip": "可选单图输入，作为图3"
-            },
-            "image_4": {
-                "name": "图像4",
-                "tooltip": "可选单图输入，作为图4"
+            "audios": {
+                "name": "音频批次",
+                "tooltip": "AUDIO 列表/批次，MiniMax H3 模式最多读取3段参考音频"
             },
             "fusion_description": {
                 "name": "融合描述",
@@ -273,7 +265,11 @@
             },
             "output_style": {
                 "name": "输出风格",
-                "tooltip": "自然语言 / Tags / 编辑指令"
+                "tooltip": "普通融合风格，或保留媒体引用标签的 MiniMax H3 Ref2VA 格式"
+            },
+            "video_frames_per_ref": {
+                "name": "每段视频抽帧数",
+                "tooltip": "H3模式下，每段参考视频送入视觉模型的代表帧数"
             },
             "vlm_service": {
                 "name": "视觉服务",
@@ -294,12 +290,12 @@
                 "tooltip": "整合后的单图提示词"
             },
             "1": {
-                "name": "图像角色",
-                "tooltip": "图1..N 与用户意图摘要"
+                "name": "参考清单",
+                "tooltip": "图片、视频、音频编号及视觉载荷映射"
             },
             "2": {
-                "name": "预览图像",
-                "tooltip": "实际送入模型的参考图预览"
+                "name": "视觉参考预览",
+                "tooltip": "实际送入视觉模型的图片和视频抽帧"
             }
         }
     }

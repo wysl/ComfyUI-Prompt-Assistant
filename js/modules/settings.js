@@ -78,7 +78,9 @@ const SERVICE_TYPES = {
         configEndpoint: '/config/translate',
         serviceType: 'translate',
         filterKey: 'llm_models',
-        includeBaidu: true
+        includeBaidu: true,
+        includeGoogleWeb: true,
+        includeGoogle: true
     },
     llm: {
         name: tUI('提示词优化'),
@@ -190,9 +192,15 @@ const serviceSelector = {
         const services = await this.getServices();
         const options = [];
 
-        // 添加百度翻译选项（仅翻译类型）
+        // 添加内置机器翻译选项（仅翻译类型）
         if (config.includeBaidu) {
             options.push({ value: 'baidu', text: tUI('百度翻译') });
+        }
+        if (config.includeGoogleWeb) {
+            options.push({ value: 'google_web', text: tUI('Google网页翻译（免Key）') });
+        }
+        if (config.includeGoogle) {
+            options.push({ value: 'google', text: tUI('Google翻译') });
         }
 
         // 过滤并添加其他服务

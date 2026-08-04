@@ -232,28 +232,20 @@
         }
     },
     "MultiImageFusionNode": {
-        "display_name": "✨Multi-Image Fusion Prompt",
-        "description": "Build one composition prompt from multiple reference images and a fusion description (not pixel blending)",
+        "display_name": "✨Multimedia Reference Fusion Prompt",
+        "description": "Build a single-image prompt from images or a MiniMax H3 Ref2VA prompt from image, video, and audio references",
         "inputs": {
             "images": {
                 "name": "Images Batch",
-                "tooltip": "Preferred IMAGE batch, ordered as Image 1..N"
+                "tooltip": "IMAGE batch or ComfyUI IMAGE list; all references are read in batch/list order"
             },
-            "image_1": {
-                "name": "Image 1",
-                "tooltip": "Optional single image used as Image 1 when batch is empty"
+            "videos": {
+                "name": "Videos Batch",
+                "tooltip": "VIDEO list/batch with up to 3 reference videos in MiniMax H3 mode"
             },
-            "image_2": {
-                "name": "Image 2",
-                "tooltip": "Optional single image used as Image 2"
-            },
-            "image_3": {
-                "name": "Image 3",
-                "tooltip": "Optional single image used as Image 3"
-            },
-            "image_4": {
-                "name": "Image 4",
-                "tooltip": "Optional single image used as Image 4"
+            "audios": {
+                "name": "Audios Batch",
+                "tooltip": "AUDIO list/batch with up to 3 reference audios in MiniMax H3 mode"
             },
             "fusion_description": {
                 "name": "Fusion Description",
@@ -273,7 +265,11 @@
             },
             "output_style": {
                 "name": "Output Style",
-                "tooltip": "Natural language / Tags / Edit instruction"
+                "tooltip": "Standard fusion styles or MiniMax H3 Ref2VA with preserved media labels"
+            },
+            "video_frames_per_ref": {
+                "name": "Frames Per Video",
+                "tooltip": "Representative frames sent to the vision model for each video in H3 mode"
             },
             "vlm_service": {
                 "name": "VLM Service",
@@ -294,12 +290,12 @@
                 "tooltip": "Single-image composition prompt"
             },
             "1": {
-                "name": "Image Roles",
-                "tooltip": "Image 1..N and user intent summary"
+                "name": "Reference Manifest",
+                "tooltip": "Image, video, and audio numbering plus visual payload mapping"
             },
             "2": {
-                "name": "Preview Images",
-                "tooltip": "Reference images actually sent to the model"
+                "name": "Visual Reference Preview",
+                "tooltip": "Images and sampled video frames actually sent to the vision model"
             }
         }
     }

@@ -2198,6 +2198,8 @@ class PromptAssistant {
                                     // 获取翻译配置
                                     const configResp = await fetch(APIService.getApiUrl('/config/translate'));
                                     let isBaidu = false;
+                                    let isGoogle = false;
+                                    let isGoogleWeb = false;
 
                                     if (configResp.ok) {
                                         const config = await configResp.json();
@@ -2205,11 +2207,22 @@ class PromptAssistant {
                                         if (config.provider === 'baidu') {
                                             isBaidu = true;
                                         }
+                                        if (config.provider === 'google') {
+                                            isGoogle = true;
+                                        }
+                                        if (config.provider === 'google_web') {
+                                            isGoogleWeb = true;
+                                        }
                                     }
 
-                                    if (isBaidu) {
-                                        // 百度翻译不支持流式，使用原有接口（自动降级）
-                                        result = await APIService.baiduTranslate(
+                                    if (isBaidu || isGoogle || isGoogleWeb) {
+                                        // 机器翻译服务不支持流式，使用专用接口
+                                        const translateRequest = (
+                                            isGoogleWeb ? APIService.googleWebTranslate :
+                                            isGoogle ? APIService.googleTranslate :
+                                            APIService.baiduTranslate
+                                        ).bind(APIService);
+                                        result = await translateRequest(
                                             contentToTranslate,
                                             langResult.from,
                                             langResult.to,
@@ -2342,6 +2355,52 @@ class PromptAssistant {
 
                     // 创建服务菜单项
                     const serviceMenuItems = [];
+
+                    const isGoogleWebCurrent = currentTranslateService === 'google_web';
+                    serviceMenuItems.push({
+                        label: 'Google网页翻译（免Key）',
+                        icon: `<span class="pi ${isGoogleWebCurrent ? 'pi-check-circle active-status' : 'pi-circle-off inactive-status'}"></span>`,
+                        onClick: async (context) => {
+                            try {
+                                const res = await fetch(APIService.getApiUrl('/services/current'), {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ service_type: 'translate', service_id: 'google_web' })
+                                });
+                                if (!res.ok) throw new Error(`服务器返回错误: ${res.status}`);
+                                UIToolkit.showStatusTip(context.buttonElement, 'success', '已切换到: Google网页翻译');
+                                window.dispatchEvent(new CustomEvent('pa-service-changed', {
+                                    detail: { service_type: 'translate', service_id: 'google_web' }
+                                }));
+                            } catch (err) {
+                                logger.error(`切换 Google 网页翻译失败: ${err.message}`);
+                                UIToolkit.showStatusTip(context.buttonElement, 'error', `切换失败: ${err.message}`);
+                            }
+                        }
+                    });
+
+                    const isGoogleCurrent = currentTranslateService === 'google';
+                    serviceMenuItems.push({
+                        label: 'Google翻译',
+                        icon: `<span class="pi ${isGoogleCurrent ? 'pi-check-circle active-status' : 'pi-circle-off inactive-status'}"></span>`,
+                        onClick: async (context) => {
+                            try {
+                                const res = await fetch(APIService.getApiUrl('/services/current'), {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ service_type: 'translate', service_id: 'google' })
+                                });
+                                if (!res.ok) throw new Error(`服务器返回错误: ${res.status}`);
+                                UIToolkit.showStatusTip(context.buttonElement, 'success', '已切换到: Google翻译');
+                                window.dispatchEvent(new CustomEvent('pa-service-changed', {
+                                    detail: { service_type: 'translate', service_id: 'google' }
+                                }));
+                            } catch (err) {
+                                logger.error(`切换 Google 翻译失败: ${err.message}`);
+                                UIToolkit.showStatusTip(context.buttonElement, 'error', `切换失败: ${err.message}`);
+                            }
+                        }
+                    });
 
                     // 百度翻译项（永远显示在第一位）
                     const isBaiduCurrent = currentTranslateService === 'baidu';

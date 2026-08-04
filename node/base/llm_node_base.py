@@ -80,11 +80,11 @@ class LLMNodeBase(BaseNode):
 
         options = []
 
-        # ---硬编码添加百度翻译---
+        # ---内置机器翻译服务---
         # 百度翻译使用独立的 baidu_translate 配置，不在 model_services 列表中
         config_manager.load_config().get('baidu_translate', {})
         # 即使没有配置 app_id，也要显示百度选项
-        options.append("百度翻译")
+        options.extend(["Google网页翻译（免Key）", "Google翻译", "百度翻译"])
 
         # ---动态获取其他 LLM 服务---
         services = config_manager.get_all_services()
@@ -127,7 +127,11 @@ class LLMNodeBase(BaseNode):
             service_name = service_model_str
             model_name = None
 
-        # ---特殊处理：百度翻译---
+        # ---特殊处理：内置机器翻译---
+        if service_name in ['Google网页翻译（免Key）', 'Google网页翻译', 'Google Web Translate', 'google_web']:
+            return 'google_web', None
+        if service_name in ['Google翻译', 'Google Translate', 'google']:
+            return 'google', None
         if service_name in ['百度翻译', '百度', 'baidu']:
             return 'baidu', None
 

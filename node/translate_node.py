@@ -20,6 +20,8 @@ from comfy_api.latest import io
 
 from ..services.llm import LLMService
 from ..services.baidu import BaiduTranslateService
+from ..services.google_translate import GoogleTranslateService
+from ..services.google_web_translate import GoogleWebTranslateService
 from ..utils.common import (
     format_api_error, format_model_with_thinking, generate_request_id,
     log_prepare, log_error, TASK_TRANSLATE, SOURCE_NODE
@@ -159,6 +161,40 @@ class PromptTranslate(LLMNodeBase, io.ComfyNode):
         return request_id, result
 
     @classmethod
+    def _translate_with_google(cls, text, from_lang, to_lang, from_lang_name, to_lang_name, unique_id):
+        """使用 Google Cloud Translation 服务。"""
+        request_id = generate_request_id("trans", "google", unique_id)
+        log_prepare(TASK_TRANSLATE, request_id, SOURCE_NODE, "Google翻译", None, None, {"方向": f"{from_lang_name}→{to_lang_name}", "长度": len(text)})
+        result = cls._run_llm_task(
+            GoogleTranslateService.translate,
+            "Google翻译",
+            text=text,
+            from_lang=from_lang,
+            to_lang=to_lang,
+            request_id=request_id,
+            task_type=TASK_TRANSLATE,
+            source=SOURCE_NODE,
+        )
+        return request_id, result
+
+    @classmethod
+    def _translate_with_google_web(cls, text, from_lang, to_lang, from_lang_name, to_lang_name, unique_id):
+        """使用免 Key 的 Google 网页翻译服务。"""
+        request_id = generate_request_id("trans", "google_web", unique_id)
+        log_prepare(TASK_TRANSLATE, request_id, SOURCE_NODE, "Google网页翻译", None, None, {"方向": f"{from_lang_name}→{to_lang_name}", "长度": len(text)})
+        result = cls._run_llm_task(
+            GoogleWebTranslateService.translate,
+            "Google网页翻译",
+            text=text,
+            from_lang=from_lang,
+            to_lang=to_lang,
+            request_id=request_id,
+            task_type=TASK_TRANSLATE,
+            source=SOURCE_NODE,
+        )
+        return request_id, result
+
+    @classmethod
     def _translate_with_llm(cls, text, from_lang, to_lang, service_id, model_name, service, service_display_name, from_lang_name, to_lang_name, auto_unload, unique_id):
         """使用 LLM 翻译服务"""
         # ---构建 provider_config---
@@ -274,8 +310,18 @@ class PromptTranslate(LLMNodeBase, io.ComfyNode):
             if not service_id:
                 raise ValueError(f"Invalid service selection: {translate_service}")
 
-            # ---百度翻译特殊处理---
-            if service_id == 'baidu':
+            # ---内置机器翻译特殊处理---
+            if service_id == 'google_web':
+                request_id, result = cls._translate_with_google_web(
+                    source_text, detected_lang, to_lang,
+                    from_lang_name, to_lang_name, unique_id
+                )
+            elif service_id == 'google':
+                request_id, result = cls._translate_with_google(
+                    source_text, detected_lang, to_lang,
+                    from_lang_name, to_lang_name, unique_id
+                )
+            elif service_id == 'baidu':
                 request_id, result = cls._translate_with_baidu(
                     source_text, detected_lang, to_lang,
                     translate_service, from_lang_name, to_lang_name, unique_id

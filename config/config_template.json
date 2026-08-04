@@ -5,6 +5,9 @@
         "app_id": "",
         "secret_key": ""
     },
+    "google_translate": {
+        "api_key": ""
+    },
     "model_services": [
         {
             "id": "zhipu",

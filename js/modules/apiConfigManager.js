@@ -33,6 +33,8 @@ class APIConfigManager {
 
         // 百度翻译配置
         this.baiduConfig = { app_id: '', secret_key: '' };
+        // Google Cloud Translation 配置
+        this.googleConfig = { api_key: '', has_api_key: false };
     }
 
     /**
@@ -97,6 +99,8 @@ class APIConfigManager {
             // 加载百度翻译配置
             const baiduRes = await fetch(APIService.getApiUrl('/config/baidu_translate'));
             this.baiduConfig = await baiduRes.json();
+            const googleRes = await fetch(APIService.getApiUrl('/config/google_translate'));
+            this.googleConfig = await googleRes.json();
 
             // 加载当前服务配置以获取current_services
             const llmRes = await fetch(APIService.getApiUrl('/config/llm'));
@@ -132,6 +136,11 @@ class APIConfigManager {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(this.baiduConfig)
+            });
+            await fetch(APIService.getApiUrl('/config/google_translate'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.googleConfig)
             });
 
             app.extensionManager.toast.add({
@@ -184,6 +193,25 @@ class APIConfigManager {
         }
     }
 
+    async _saveGoogleConfig() {
+        try {
+            await fetch(APIService.getApiUrl('/config/google_translate'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.googleConfig)
+            });
+            this.notifyConfigChange();
+            app.extensionManager.toast.add({
+                severity: "success",
+                summary: "Google翻译配置已保存",
+                life: 2000
+            });
+        } catch (error) {
+            logger.error('保存 Google 翻译配置失败', error);
+            app.extensionManager.toast.add({ severity: "error", summary: "保存失败", detail: error.message, life: 3000 });
+        }
+    }
+
     /**
      * 创建API配置UI
      */
@@ -200,7 +228,9 @@ class APIConfigManager {
         const tabContent = document.createElement('div');
         tabContent.className = 'tab-content';
 
-        // 创建百度翻译标签页
+        // 创建内置翻译标签页
+        const googleContent = this._createGoogleTab();
+        tabContent.appendChild(googleContent);
         const baiduContent = this._createBaiduTab();
         tabContent.appendChild(baiduContent);
 
@@ -214,7 +244,7 @@ class APIConfigManager {
         container.appendChild(tabContainer);
 
         // 默认显示第一个标签页
-        this._switchTab('baidu', tabHeader, tabContent);
+        this._switchTab('google', tabHeader, tabContent);
     }
 
     /**
@@ -223,6 +253,10 @@ class APIConfigManager {
     _createTabHeader() {
         const header = document.createElement('div');
         header.className = 'tab-header';
+
+        // Google 翻译标签
+        const googleTab = this._createTabButton('google', tUI('Google翻译'), tUI('机器翻译'));
+        header.appendChild(googleTab);
 
         // 百度翻译标签
         const baiduTab = this._createTabButton('baidu', tUI('百度翻译'), tUI('机器翻译'));
@@ -272,7 +306,7 @@ class APIConfigManager {
             buttons.forEach(btn => {
                 const tabId = btn.dataset.tab;
                 // 排除特殊标签(如百度翻译)
-                if (tabId && tabId !== 'baidu') {
+                if (tabId && tabId !== 'baidu' && tabId !== 'google') {
                     serviceIds.push(tabId);
                 }
             });
@@ -672,6 +706,38 @@ class APIConfigManager {
         section.appendChild(secretInput.group);
         pane.appendChild(section);
 
+        return pane;
+    }
+
+    _createGoogleTab() {
+        const pane = document.createElement('div');
+        pane.className = 'tab-pane';
+        pane.dataset.tab = 'google';
+
+        const section = createFormGroup('Google 翻译配置', [
+            { text: '启用 Google Cloud Translation API', url: 'https://console.cloud.google.com/apis/library/translate.googleapis.com' }
+        ]);
+        section.classList.add('google-translate-section');
+
+        const apiKeyInput = createInputGroup('API Key', '请输入 Google Cloud Translation API Key');
+        apiKeyInput.input.type = 'password';
+        apiKeyInput.input.value = this.googleConfig.api_key || '';
+        if (this.googleConfig.has_api_key) {
+            apiKeyInput.input.placeholder = 'API Key 已配置；留空不会修改';
+        }
+        apiKeyInput.input.addEventListener('input', (e) => {
+            this.googleConfig.api_key = e.target.value;
+        });
+        apiKeyInput.input.addEventListener('blur', async () => {
+            await this._saveGoogleConfig();
+        });
+
+        const hint = document.createElement('div');
+        hint.className = 'settings-help-text';
+        hint.textContent = '需要启用 Cloud Translation API，并为项目开启结算。';
+        section.appendChild(apiKeyInput.group);
+        section.appendChild(hint);
+        pane.appendChild(section);
         return pane;
     }
 

@@ -532,6 +532,8 @@ class NodeHelpTranslator {
             const textsToTranslate = textBlocks.map(block => block.text);
             let translations = [];
             let isBaidu = false;
+            let isGoogle = false;
+            let isGoogleWeb = false;
 
             // 1. 获取全局翻译配置
             // 直接使用后端全局配置（与 PromptAssistant 共享）
@@ -542,13 +544,32 @@ class NodeHelpTranslator {
                     if (config.provider === 'baidu') {
                         isBaidu = true;
                     }
+                    if (config.provider === 'google') {
+                        isGoogle = true;
+                    }
+                    if (config.provider === 'google_web') {
+                        isGoogleWeb = true;
+                    }
                 }
             } catch (e) {
                 logger.warn(`[NodeHelpTranslator] 获取翻译配置失败: ${e.message}，将默认使用LLM`);
             }
 
             // 2. 根据服务类型执行翻译
-            if (isBaidu) {
+            if (isBaidu || isGoogle || isGoogleWeb) {
+                if (isGoogleWeb) {
+                    logger.log(`[NodeHelpTranslator] 使用 Google 网页翻译 (${from}->${to})`);
+                    const results = await APIService.batchGoogleWebTranslate(textsToTranslate, from, to);
+                    translations = results.map(r => (
+                        r && r.success && r.data && r.data.translated ? r.data.translated : null
+                    ));
+                } else if (isGoogle) {
+                    logger.log(`[NodeHelpTranslator] 使用 Google 翻译API进行翻译 (${from}->${to})`);
+                    const results = await APIService.batchGoogleTranslate(textsToTranslate, from, to);
+                    translations = results.map(r => (
+                        r && r.success && r.data && r.data.translated ? r.data.translated : null
+                    ));
+                } else {
                 logger.log(`[NodeHelpTranslator] 使用百度翻译API进行翻译 (${from}->${to})`);
                 // 百度批量翻译是串行请求，返回结果数组
                 const results = await APIService.batchBaiduTranslate(textsToTranslate, from, to);
@@ -561,11 +582,12 @@ class NodeHelpTranslator {
                     }
                     return null;
                 });
+                }
 
                 // 检查是否所有翻译都失败了
                 const successCount = translations.filter(t => t !== null).length;
                 if (successCount === 0 && textsToTranslate.length > 0) {
-                    throw new Error('所有文本翻译失败 (Baidu)');
+                    throw new Error('所有机器翻译请求均失败');
                 }
 
             } else {
@@ -696,7 +718,7 @@ class NodeHelpTranslator {
             const enableStreaming = typeof window !== 'undefined' &&
                 window.FEATURES && window.FEATURES.enableStreaming !== false;
 
-            if (!enableStreaming || isBaidu) {
+            if (!enableStreaming || isBaidu || isGoogle || isGoogleWeb) {
                 // 非流式模式或百度翻译：批量渲染结果
                 const cleanedTranslations = translations.map(t => t ? t.replace(/^\|\s*/, '') : t);
                 this._renderTranslations(textBlocks, cleanedTranslations, nodeName);
@@ -1231,6 +1253,52 @@ class NodeHelpTranslator {
         }
 
         const menuItems = [];
+
+        const isGoogleWeb = currentServiceId === 'google_web';
+        menuItems.push({
+            label: 'Google网页翻译（免Key）',
+            icon: isGoogleWeb ? 'pi pi-check' : '',
+            command: async () => {
+                const success = await this._setTranslateConfig('google_web', '');
+                if (success) {
+                    this._currentTranslateConfig = { provider: 'google_web', model: '' };
+                    UIToolkit.showStatusTip(
+                        document.querySelector(`.pa-translate-btn[data-node-name="${nodeName}"]`),
+                        'success',
+                        '已选择: Google网页翻译'
+                    );
+                    if (this.currentHelpPanel.splitBtn) {
+                        this.currentHelpPanel.splitBtn.updateMenu(this._getMenuItems(nodeName, currentMode));
+                    }
+                    window.dispatchEvent(new CustomEvent('pa-service-changed', {
+                        detail: { service_type: 'translate', service_id: 'google_web' }
+                    }));
+                }
+            }
+        });
+
+        const isGoogle = currentServiceId === 'google';
+        menuItems.push({
+            label: 'Google翻译',
+            icon: isGoogle ? 'pi pi-check' : '',
+            command: async () => {
+                const success = await this._setTranslateConfig('google', '');
+                if (success) {
+                    this._currentTranslateConfig = { provider: 'google', model: '' };
+                    UIToolkit.showStatusTip(
+                        document.querySelector(`.pa-translate-btn[data-node-name="${nodeName}"]`),
+                        'success',
+                        '已选择: Google翻译'
+                    );
+                    if (this.currentHelpPanel.splitBtn) {
+                        this.currentHelpPanel.splitBtn.updateMenu(this._getMenuItems(nodeName, currentMode));
+                    }
+                    window.dispatchEvent(new CustomEvent('pa-service-changed', {
+                        detail: { service_type: 'translate', service_id: 'google' }
+                    }));
+                }
+            }
+        });
 
         // 1. 添加百度翻译选项（始终显示）
         const isBaidu = currentServiceId === 'baidu';

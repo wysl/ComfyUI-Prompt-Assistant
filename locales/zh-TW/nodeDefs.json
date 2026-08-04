@@ -232,28 +232,20 @@
         }
     },
     "MultiImageFusionNode": {
-        "display_name": "✨多圖融合提示詞",
-        "description": "根據多張參考圖與融合描述，生成整合到一張圖的提示詞（非像素融圖）",
+        "display_name": "✨多媒體參考融合提示詞",
+        "description": "根據參考圖片生成單圖提示詞，或根據圖片、影片、音訊生成 MiniMax H3 Ref2VA 提示詞",
         "inputs": {
             "images": {
-                "name": "图像批次",
-                "tooltip": "优先输入：IMAGE batch，按顺序作为图1..N"
+                "name": "圖像批次",
+                "tooltip": "IMAGE 批次或 ComfyUI IMAGE 列表，按批次/列表順序讀取全部參考圖"
             },
-            "image_1": {
-                "name": "图像1",
-                "tooltip": "可选单图输入，作为图1（当批次为空时使用）"
+            "videos": {
+                "name": "影片批次",
+                "tooltip": "VIDEO 列表/批次，MiniMax H3 模式最多讀取3段參考影片"
             },
-            "image_2": {
-                "name": "图像2",
-                "tooltip": "可选单图输入，作为图2"
-            },
-            "image_3": {
-                "name": "图像3",
-                "tooltip": "可选单图输入，作为图3"
-            },
-            "image_4": {
-                "name": "图像4",
-                "tooltip": "可选单图输入，作为图4"
+            "audios": {
+                "name": "音訊批次",
+                "tooltip": "AUDIO 列表/批次，MiniMax H3 模式最多讀取3段參考音訊"
             },
             "fusion_description": {
                 "name": "融合描述",

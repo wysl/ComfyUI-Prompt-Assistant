@@ -1,8 +1,8 @@
 """
-多图融合提示词节点 - V3
+多媒体参考融合提示词节点 - V3
 
 不是像素级融图，而是：
-- 输入多张参考图（IMAGE batch 或 最多 4 路单图）
+- 输入多张参考图，或 MiniMax H3 所需的图片/视频/音频参考
 - 输入用户希望“整合到一张画面里”的描述
 - 调用 VLM 一次看多图，输出可直接用于生图的融合提示词
 """
@@ -28,6 +28,19 @@ from ..utils.common import (
     get_model_max_images,
     log_error,
     log_prepare,
+)
+from ..utils.multimedia_reference import (
+    H3_OUTPUT_STYLE,
+    build_h3_reference_manifest,
+    build_visual_payload,
+    collect_audio_references,
+    collect_image_frames,
+    collect_video_references,
+    normalize_frames,
+    reference_hash,
+    sanitize_h3_prompt,
+    unwrap_scalar,
+    validate_h3_references,
 )
 from .base import VLMNodeBase
 
@@ -60,8 +73,47 @@ DEFAULT_FUSION_RULE = """Role
 """
 
 
+H3_REF2VA_RULE = """Role
+You are a MiniMax H3 Ref2VA prompt director. Convert the supplied multimedia
+references and user intent into one production-ready audiovisual video prompt.
+
+Absolute requirements
+1. Write the six sections below, in exactly this order:
+   subject_definitions:
+   summary:
+   retention_analysis:
+   detailed_description:
+   overall_soundscape:
+   non_diegetic_music:
+2. Write all section content in English. Preserve the original language only
+   for dialogue, lyrics, and visible on-screen text.
+3. Use the supplied labels exactly and consistently: <Picture N>, <Video N>,
+   <Audio N>, and derived reusable visible subjects as <Subject N>.
+4. Never renumber, omit, or invent a source reference. A source label must not
+   exceed the supplied reference counts.
+5. In subject_definitions, define reusable people, objects, environments,
+   styles, actions, or voices and state which source reference provides them.
+6. In summary, begin with applicable task types in square brackets, chosen from
+   reference generation, keyframe completion, video editing, video
+   continuation, audio reuse, and audio reference.
+7. In retention_analysis, describe how each used reference is preserved,
+   transferred, copied, or referenced.
+8. Make detailed_description a concrete shot-by-shot target video timeline.
+   Establish composition, appearance, environment, lighting, action, state
+   changes, camera movement, physical sound, and where each reference applies.
+9. Use [Shot 1], [Shot 2], etc. Later shots must have increasing timestamps.
+   Write dialogue as <d>[Language] exact dialogue</d> and do not translate or
+   rewrite user-provided dialogue.
+10. Audio waveforms are not directly available to the vision model. Use only
+    the user intent and supplied audio metadata for <Audio N>; do not invent
+    exact speech, lyrics, or sound content that was not specified.
+11. Output plain text only: no Markdown headings, bullets, code fences, or
+    explanation before or after the six sections.
+"""
+
+
 class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
-    """多图融合提示词节点：多张参考图 + 融合描述 -> 一张图的提示词"""
+    """图片融合或 MiniMax H3 多媒体参考提示词节点。"""
 
     @classmethod
     def define_schema(cls):
@@ -95,46 +147,36 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
 
         return io.Schema(
             node_id="MultiImageFusionNode",
-            display_name="✨Multi-Image Fusion Prompt",
+            display_name="✨Multimedia Reference Fusion Prompt",
             category="✨Prompt Assistant",
             description=(
-                "Generate one composition prompt from multiple reference images "
-                "and a user description of how to integrate them into a single scene"
+                "Generate a composition prompt from reference images, or a "
+                "MiniMax H3 Ref2VA prompt from image/video/audio references"
             ),
             inputs=[
                 io.Image.Input(
                     "images",
                     optional=True,
-                    tooltip="Preferred input: IMAGE batch. Image 1..N follow batch order.",
+                    tooltip="IMAGE batch or ComfyUI IMAGE list. References follow batch/list order.",
                 ),
-                io.Image.Input(
-                    "image_1",
+                io.Video.Input(
+                    "videos",
                     optional=True,
-                    tooltip="Optional single image as Image 1. Used when images batch is empty.",
+                    tooltip="ComfyUI VIDEO list/batch containing up to 3 H3 reference videos.",
                 ),
-                io.Image.Input(
-                    "image_2",
+                io.Audio.Input(
+                    "audios",
                     optional=True,
-                    tooltip="Optional single image as Image 2.",
-                ),
-                io.Image.Input(
-                    "image_3",
-                    optional=True,
-                    tooltip="Optional single image as Image 3.",
-                ),
-                io.Image.Input(
-                    "image_4",
-                    optional=True,
-                    tooltip="Optional single image as Image 4.",
+                    tooltip="ComfyUI AUDIO list/batch containing up to 3 H3 reference audios.",
                 ),
                 io.String.Input(
                     "fusion_description",
                     multiline=True,
                     default="",
-                    placeholder="Optional. Leave empty to auto-compose from reference images only",
+                    placeholder="Describe the target image or MiniMax H3 target video",
                     tooltip=(
-                        "Optional. Describe how to integrate the references into one scene. "
-                        "If empty, the selected rule will auto-compose a single-image prompt from the reference images only."
+                        "Describe how to use the references. In H3 mode, include any required "
+                        "audio role, dialogue, editing, continuation, or preservation intent."
                     ),
                 ),
                 io.Combo.Input(
@@ -158,9 +200,26 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "output_style",
-                    options=["Auto", "Natural Language", "Tags", "Edit Instruction"],
+                    options=[
+                        "Auto",
+                        "Natural Language",
+                        "Tags",
+                        "Edit Instruction",
+                        H3_OUTPUT_STYLE,
+                    ],
                     default="Auto",
-                    tooltip="Preferred output style for the fused prompt",
+                    tooltip=(
+                        "Preferred output style. MiniMax H3 Ref2VA preserves "
+                        "Picture/Video/Audio reference labels and emits six sections."
+                    ),
+                ),
+                io.Int.Input(
+                    "video_frames_per_ref",
+                    default=3,
+                    min=1,
+                    max=8,
+                    advanced=True,
+                    tooltip="Representative frames sent to the VLM for each reference video in H3 mode.",
                 ),
                 io.Combo.Input(
                     "vlm_service",
@@ -190,16 +249,15 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 io.Image.Output("preview_images"),
             ],
             hidden=[io.Hidden.unique_id],
+            is_input_list=True,
         )
 
     @classmethod
     def fingerprint_inputs(
         cls,
         images=None,
-        image_1=None,
-        image_2=None,
-        image_3=None,
-        image_4=None,
+        videos=None,
+        audios=None,
         fusion_description=None,
         rule=None,
         custom_rule=None,
@@ -207,14 +265,28 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         output_style=None,
         vlm_service=None,
         ollama_auto_unload=None,
+        video_frames_per_ref=None,
         seed=None,
     ):
-        desc_hash = hashlib.md5((fusion_description or "").encode("utf-8")).hexdigest()
-        rule_hash = hashlib.md5((custom_rule_content or "").encode("utf-8")).hexdigest()
-        img_hash = cls._hash_image_inputs(images, image_1, image_2, image_3, image_4)
+        fusion_description = unwrap_scalar(fusion_description, "") or ""
+        rule = unwrap_scalar(rule, "")
+        custom_rule = unwrap_scalar(custom_rule, False)
+        custom_rule_content = unwrap_scalar(custom_rule_content, "") or ""
+        output_style = unwrap_scalar(output_style, "Auto")
+        vlm_service = unwrap_scalar(vlm_service, "")
+        ollama_auto_unload = unwrap_scalar(ollama_auto_unload, True)
+        video_frames_per_ref = unwrap_scalar(video_frames_per_ref, 3)
+        seed = unwrap_scalar(seed, 0)
+        desc_hash = hashlib.md5(fusion_description.encode("utf-8")).hexdigest()
+        rule_hash = hashlib.md5(custom_rule_content.encode("utf-8")).hexdigest()
+        media_hash = reference_hash(
+            images,
+            videos,
+            audios,
+        )
         return hash(
             (
-                img_hash,
+                media_hash,
                 desc_hash,
                 rule,
                 bool(custom_rule),
@@ -222,82 +294,10 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 output_style,
                 vlm_service,
                 bool(ollama_auto_unload),
+                video_frames_per_ref,
                 seed,
             )
         )
-
-    @classmethod
-    def _hash_image_inputs(cls, *image_values) -> str:
-        parts: List[str] = []
-        for value in image_values:
-            if value is None:
-                parts.append("none")
-                continue
-            try:
-                if hasattr(value, "shape"):
-                    shape = tuple(value.shape)
-                    flat = value.detach().float().cpu().reshape(-1)
-                    sample_idx = [0, len(flat) // 2, len(flat) - 1] if flat.numel() else []
-                    sample = ",".join(f"{float(flat[i]):.4f}" for i in sample_idx)
-                    parts.append(f"{shape}:{sample}")
-                else:
-                    parts.append(str(type(value)))
-            except Exception:
-                parts.append("hash_error")
-        return hashlib.md5("|".join(parts).encode("utf-8")).hexdigest()
-
-    @classmethod
-    def _collect_images(
-        cls,
-        images=None,
-        image_1=None,
-        image_2=None,
-        image_3=None,
-        image_4=None,
-    ) -> torch.Tensor:
-        """收集输入图像为 [N,H,W,C] batch。优先 images batch，否则拼接 image_1..4。"""
-        tensors: List[torch.Tensor] = []
-
-        if images is not None and hasattr(images, "numel") and images.numel() > 0:
-            batch = images
-            if len(batch.shape) == 3:
-                batch = batch.unsqueeze(0)
-            if len(batch.shape) != 4:
-                raise ValueError(f"Unsupported images tensor shape: {tuple(batch.shape)}")
-            for i in range(batch.shape[0]):
-                tensors.append(batch[i : i + 1])
-        else:
-            for img in (image_1, image_2, image_3, image_4):
-                if img is None or not hasattr(img, "numel") or img.numel() == 0:
-                    continue
-                tensor = img
-                if len(tensor.shape) == 3:
-                    tensor = tensor.unsqueeze(0)
-                if len(tensor.shape) != 4:
-                    raise ValueError(f"Unsupported image tensor shape: {tuple(tensor.shape)}")
-                for i in range(tensor.shape[0]):
-                    tensors.append(tensor[i : i + 1])
-
-        if not tensors:
-            raise ValueError(
-                "No images provided. Connect an IMAGE batch to 'images', "
-                "or provide image_1/image_2/..."
-            )
-
-        base = tensors[0]
-        _, base_h, base_w, _ = base.shape
-        normalized: List[torch.Tensor] = [base]
-        for tensor in tensors[1:]:
-            if tensor.shape[1] == base_h and tensor.shape[2] == base_w:
-                normalized.append(tensor)
-                continue
-            nchw = tensor.permute(0, 3, 1, 2).float()
-            resized = torch.nn.functional.interpolate(
-                nchw, size=(base_h, base_w), mode="bilinear", align_corners=False
-            )
-            normalized.append(resized.permute(0, 2, 3, 1).to(tensor.dtype))
-
-        return torch.cat(normalized, dim=0)
 
     @classmethod
     def _tensor_to_data_urls(cls, batch: torch.Tensor, max_images: int) -> Tuple[List[str], torch.Tensor]:
@@ -395,6 +395,48 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         )
 
     @classmethod
+    def _build_h3_prompt(
+        cls,
+        fusion_description: str,
+        image_count: int,
+        video_count: int,
+        audio_count: int,
+        payload_labels: List[str],
+        additional_rule: str = "",
+    ) -> str:
+        reference_lines = [
+            f"- <Picture {index}>: reference image {index}"
+            for index in range(1, image_count + 1)
+        ]
+        reference_lines.extend(
+            f"- <Video {index}>: reference video {index}"
+            for index in range(1, video_count + 1)
+        )
+        reference_lines.extend(
+            f"- <Audio {index}>: reference audio {index}; exact audio content is unknown unless the user describes it"
+            for index in range(1, audio_count + 1)
+        )
+        payload_mapping = "\n".join(f"  {line}" for line in payload_labels)
+        intent = fusion_description or "(empty; infer a coherent target audiovisual scene from the references)"
+        additional_rule_block = (
+            f"\n\n[Additional user rule]\n{additional_rule.strip()}"
+            if additional_rule and additional_rule.strip()
+            else ""
+        )
+        return (
+            f"{H3_REF2VA_RULE}\n\n"
+            "[Reference inventory]\n"
+            f"{chr(10).join(reference_lines)}\n\n"
+            "[VLM visual payload mapping]\n"
+            f"{payload_mapping}\n\n"
+            "[User intent]\n"
+            f"{intent}"
+            f"{additional_rule_block}\n\n"
+            "Use all relevant references in a single coherent target video. Keep the reference labels in the final text; "
+            "do not replace them with generic words such as image or source."
+        )
+
+    @classmethod
     def _build_image_roles_text(cls, image_count: int, fusion_description: str) -> str:
         lines = [f"Image {i}: reference image {i}" for i in range(1, image_count + 1)]
         intent = (fusion_description or "").strip()
@@ -449,15 +491,14 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
     def execute(
         cls,
         images=None,
-        image_1=None,
-        image_2=None,
-        image_3=None,
-        image_4=None,
+        videos=None,
+        audios=None,
         fusion_description=None,
         rule=None,
         custom_rule=None,
         custom_rule_content=None,
         output_style=None,
+        video_frames_per_ref=None,
         vlm_service=None,
         ollama_auto_unload=None,
         seed=None,
@@ -466,18 +507,38 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         request_id = None
 
         try:
-            fusion_description = (fusion_description or "").strip()
-            batch = cls._collect_images(images, image_1, image_2, image_3, image_4)
-            if batch.shape[0] < 2:
-                raise ValueError("Multi-image fusion needs at least 2 images.")
+            fusion_description = (unwrap_scalar(fusion_description, "") or "").strip()
+            rule = unwrap_scalar(rule, "") or ""
+            custom_rule = bool(unwrap_scalar(custom_rule, False))
+            custom_rule_content = unwrap_scalar(custom_rule_content, "") or ""
+            output_style = unwrap_scalar(output_style, "Auto") or "Auto"
+            video_frames_per_ref = int(unwrap_scalar(video_frames_per_ref, 3) or 3)
+            vlm_service = unwrap_scalar(vlm_service, "") or ""
+            ollama_auto_unload = bool(unwrap_scalar(ollama_auto_unload, True))
+            seed = unwrap_scalar(seed, 0)
 
-            rule_content, rule_name = cls._resolve_rule_content(
-                rule or "",
-                bool(custom_rule),
-                custom_rule_content or "",
-            )
+            image_frames = collect_image_frames(images)
+            videos = collect_video_references(videos)
+            audios = collect_audio_references(audios)
+            is_h3 = output_style == H3_OUTPUT_STYLE
 
-            service_id, model_name = cls.parse_service_model(vlm_service or "")
+            if is_h3:
+                validate_h3_references(len(image_frames), videos, audios)
+                rule_name = H3_OUTPUT_STYLE
+            else:
+                if videos or audios:
+                    raise ValueError(
+                        f"Video/audio references require output style '{H3_OUTPUT_STYLE}'."
+                    )
+                if len(image_frames) < 2:
+                    raise ValueError("Multi-image fusion needs at least 2 images.")
+                rule_content, rule_name = cls._resolve_rule_content(
+                    rule,
+                    custom_rule,
+                    custom_rule_content,
+                )
+
+            service_id, model_name = cls.parse_service_model(vlm_service)
             if not service_id:
                 raise ValueError(f"Invalid service selection: {vlm_service}")
 
@@ -505,28 +566,58 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 "base_url": service.get("base_url", ""),
                 "api_key": service.get("api_key", ""),
                 "temperature": target_model.get("temperature", 0.7),
-                "max_tokens": max(int(target_model.get("max_tokens", 1000) or 1000), 1200),
+                "max_tokens": max(
+                    int(target_model.get("max_tokens", 1000) or 1000),
+                    2600 if is_h3 else 1200,
+                ),
                 "top_p": target_model.get("top_p", 0.9),
             }
             if service.get("type") == "ollama":
-                provider_config["auto_unload"] = bool(ollama_auto_unload)
+                provider_config["auto_unload"] = ollama_auto_unload
 
             if not provider_config.get("model"):
                 raise ValueError(f"Please configure model for {vlm_service}")
             if cls._service_requires_api_key(service) and not provider_config.get("api_key"):
                 raise ValueError(f"Please configure API key and model for {vlm_service}")
 
-            max_images = get_model_max_images(provider_config.get("model"))
-            max_images = max(2, min(max_images, 8))
-            images_data, preview_tensor = cls._tensor_to_data_urls(batch, max_images=max_images)
-            image_count = len(images_data)
-
-            prompt_to_send = cls._build_prompt(
-                rule_content=rule_content,
-                fusion_description=fusion_description,
-                image_count=image_count,
-                output_style=output_style or "Auto",
-            )
+            model_image_limit = get_model_max_images(provider_config.get("model"))
+            if is_h3:
+                max_payload_images = max(1, min(model_image_limit, 32))
+                payload_tensor, payload_labels = build_visual_payload(
+                    image_frames,
+                    videos,
+                    max_payload_images=max_payload_images,
+                    frames_per_video=video_frames_per_ref,
+                )
+                images_data, preview_tensor = cls._tensor_to_data_urls(
+                    payload_tensor, max_images=payload_tensor.shape[0]
+                )
+                prompt_to_send = cls._build_h3_prompt(
+                    fusion_description=fusion_description,
+                    image_count=len(image_frames),
+                    video_count=len(videos),
+                    audio_count=len(audios),
+                    payload_labels=payload_labels,
+                    additional_rule=custom_rule_content if custom_rule else "",
+                )
+                reference_manifest = build_h3_reference_manifest(
+                    len(image_frames), videos, audios, payload_labels, fusion_description
+                )
+            else:
+                batch = normalize_frames(image_frames)
+                max_images = max(2, min(model_image_limit, 8))
+                images_data, preview_tensor = cls._tensor_to_data_urls(
+                    batch, max_images=max_images
+                )
+                prompt_to_send = cls._build_prompt(
+                    rule_content=rule_content,
+                    fusion_description=fusion_description,
+                    image_count=len(images_data),
+                    output_style=output_style,
+                )
+                reference_manifest = cls._build_image_roles_text(
+                    len(images_data), fusion_description
+                )
 
             request_id = generate_request_id("fusion", None, unique_id)
             model_full_name = provider_config.get("model")
@@ -546,7 +637,13 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 service_display_name,
                 model_display,
                 rule_name,
-                {"图像数": image_count, "输出风格": output_style or "Auto"},
+                {
+                    "图片参考": len(image_frames),
+                    "视频参考": len(videos),
+                    "音频参考": len(audios),
+                    "VLM视觉载荷": len(images_data),
+                    "输出风格": output_style,
+                },
             )
 
             result = cls._run_vision_task(
@@ -569,14 +666,22 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     or data.get("result")
                     or ""
                 ).strip()
-                fusion_prompt = cls._sanitize_fusion_prompt(fusion_prompt)
+                fusion_prompt = (
+                    sanitize_h3_prompt(
+                        fusion_prompt,
+                        image_count=len(image_frames),
+                        video_count=len(videos),
+                        audio_count=len(audios),
+                    )
+                    if is_h3
+                    else cls._sanitize_fusion_prompt(fusion_prompt)
+                )
                 if not fusion_prompt:
                     error_msg = "API returned empty result"
                     log_error(TASK_MULTI_IMAGE_FUSION, request_id, error_msg, source=SOURCE_NODE)
                     raise RuntimeError(f"Fusion failed: {error_msg}")
 
-                image_roles = cls._build_image_roles_text(image_count, fusion_description)
-                return io.NodeOutput(fusion_prompt, image_roles, preview_tensor)
+                return io.NodeOutput(fusion_prompt, reference_manifest, preview_tensor)
 
             error_msg = (
                 result.get("error", "Unknown error") if result else "No result returned"
@@ -589,6 +694,6 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         except InterruptProcessingException:
             raise
         except Exception as e:
-            error_msg = format_api_error(e, vlm_service)
+            error_msg = str(e) if isinstance(e, ValueError) else format_api_error(e, vlm_service)
             log_error(TASK_MULTI_IMAGE_FUSION, request_id, error_msg, source=SOURCE_NODE)
             raise RuntimeError(f"Fusion error: {error_msg}")

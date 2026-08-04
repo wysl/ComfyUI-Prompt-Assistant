@@ -408,6 +408,64 @@ class APIService {
         }
     }
 
+    /** Google Cloud Translation API（非流式） */
+    static async googleTranslate(text, from = 'auto', to = 'zh', request_id = null) {
+        if (!request_id) request_id = this.generateRequestId('trans', 'google');
+        const controller = new AbortController();
+        runningRequests.set(request_id, controller);
+        try {
+            const response = await fetch(this.getApiUrl('google/translate'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, from, to, request_id }),
+                signal: controller.signal,
+            });
+            return await response.json();
+        } catch (error) {
+            return { success: false, error: error.message, cancelled: error.name === 'AbortError' };
+        } finally {
+            runningRequests.delete(request_id);
+        }
+    }
+
+    static async batchGoogleTranslate(texts, from = 'auto', to = 'zh') {
+        if (!Array.isArray(texts) || texts.length === 0) return [];
+        const results = [];
+        for (const text of texts) {
+            results.push(await this.googleTranslate(text, from, to));
+        }
+        return results;
+    }
+
+    /** Google 网页翻译（免 API Key，非官方接口，非流式） */
+    static async googleWebTranslate(text, from = 'auto', to = 'zh', request_id = null) {
+        if (!request_id) request_id = this.generateRequestId('trans', 'google_web');
+        const controller = new AbortController();
+        runningRequests.set(request_id, controller);
+        try {
+            const response = await fetch(this.getApiUrl('google_web/translate'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, from, to, request_id }),
+                signal: controller.signal,
+            });
+            return await response.json();
+        } catch (error) {
+            return { success: false, error: error.message, cancelled: error.name === 'AbortError' };
+        } finally {
+            runningRequests.delete(request_id);
+        }
+    }
+
+    static async batchGoogleWebTranslate(texts, from = 'auto', to = 'zh') {
+        if (!Array.isArray(texts) || texts.length === 0) return [];
+        const results = [];
+        for (const text of texts) {
+            results.push(await this.googleWebTranslate(text, from, to));
+        }
+        return results;
+    }
+
     /**
      * LLM扩写提示词
      */
@@ -987,4 +1045,4 @@ class APIService {
     }
 }
 
-export { APIService }; 
+export { APIService };

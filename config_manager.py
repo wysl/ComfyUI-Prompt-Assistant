@@ -636,6 +636,12 @@ class ConfigManager:
         config = self.load_config()
         return config.get("baidu_translate", self.default_config["baidu_translate"])
 
+    def get_google_translate_config(self):
+        """获取 Google Cloud Translation 配置。"""
+        config = self.load_config()
+        default = self.default_config.get("google_translate", {"api_key": ""})
+        return config.get("google_translate", default)
+
     def get_llm_config(self):
         """获取LLM配置"""
         config = self.load_config()
@@ -825,6 +831,32 @@ class ConfigManager:
                 "top_p": 0.9,
                 "providers": {}
             }
+
+        if current_service_id == 'google':
+            google_config = self.get_google_translate_config()
+            return {
+                "provider": "google",
+                "model": "",
+                "base_url": "",
+                "api_key": "",
+                "has_api_key": bool(google_config.get('api_key')),
+                "temperature": 0.0,
+                "max_tokens": 0,
+                "top_p": 1.0,
+                "providers": {}
+            }
+
+        if current_service_id == 'google_web':
+            return {
+                "provider": "google_web",
+                "model": "",
+                "base_url": "",
+                "api_key": "",
+                "temperature": 0.0,
+                "max_tokens": 0,
+                "top_p": 1.0,
+                "providers": {}
+            }
         
         # 查找对应的LLM服务
         service = self._get_service_by_id(current_service_id)
@@ -938,6 +970,15 @@ class ConfigManager:
         if secret_key is not None:
             config["baidu_translate"]["secret_key"] = secret_key
 
+        return self.save_config(config)
+
+    def update_google_translate_config(self, api_key=None):
+        """更新 Google Cloud Translation API Key。"""
+        config = self.load_config()
+        if "google_translate" not in config:
+            config["google_translate"] = {}
+        if api_key:
+            config["google_translate"]["api_key"] = api_key
         return self.save_config(config)
 
 
@@ -1490,31 +1531,39 @@ class ConfigManager:
                 self._log("设置当前服务商失败: 配置版本过低")
                 return False
             
-            # ---百度翻译特殊处理---
-            # 百度翻译使用独立的baidu_translate配置,不在model_services中
-            if service_id == 'baidu':
-                # 百度翻译支持LLM服务类型(旧兼容)和translate服务类型
+            # ---内置翻译服务特殊处理---
+            # 内置机器翻译不在 model_services 中
+            if service_id in ['baidu', 'google', 'google_web']:
+                # 内置翻译服务支持 LLM 服务类型(旧兼容)和 translate 服务类型
                 if service_type not in ['llm', 'translate']:
-                    self._log(f"设置当前服务商失败: 百度翻译不支持{service_type}服务类型")
+                    self._log(f"设置当前服务商失败: {service_id} 翻译不支持{service_type}服务类型")
                     return False
                 
-                # 确保baidu_translate配置存在
+                # 确保内置翻译服务配置存在
                 if 'baidu_translate' not in config:
                     config['baidu_translate'] = {"app_id": "", "secret_key": ""}
+                if 'google_translate' not in config:
+                    config['google_translate'] = {"api_key": ""}
                 
                 # 确保current_services结构存在
                 if 'current_services' not in config:
                     config['current_services'] = {}
                 
-                # 设置百度为当前服务(无模型概念)
+                # 设置当前内置翻译服务(无模型概念)
                 config['current_services'][service_type] = {
-                    "service": "baidu",
+                    "service": service_id,
                     "model": ""
                 }
                 
                 # 保存配置
                 if self.save_config(config):
-                    self._log(f"当前服务商已切换: 百度翻译 ({service_type})")
+                    service_names = {
+                        "baidu": "百度翻译",
+                        "google": "Google 翻译",
+                        "google_web": "Google 网页翻译",
+                    }
+                    service_name = service_names[service_id]
+                    self._log(f"当前服务商已切换: {service_name} ({service_type})")
                     return True
                 else:
                     self._log("设置当前服务商失败: 保存配置失败")
