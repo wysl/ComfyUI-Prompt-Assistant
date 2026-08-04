@@ -197,7 +197,7 @@ class RulesConfigManager {
             { id: 'zhVision', title: tUI('中文反推'), subtitle: tUI('图像反推中文提示词'), addLabel: tUI('添加中文反推规则') },
             { id: 'enVision', title: tUI('英文反推'), subtitle: tUI('图像反推英文提示词'), addLabel: tUI('添加英文反推规则') },
             { id: 'video', title: tUI('视频反推'), subtitle: tUI('将视频反推提示词'), addLabel: tUI('添加视频反推规则') },
-            { id: 'fusion', title: tUI('多图融合'), subtitle: tUI('多图融合提示词规则'), addLabel: tUI('添加多图融合规则') },
+            { id: 'fusion', title: tUI('多媒体参考'), subtitle: tUI('多媒体参考提示词规则'), addLabel: tUI('添加多媒体参考规则') },
             { id: 'translate', title: tUI('翻译规则'), subtitle: tUI('大模型翻译规则'), addLabel: null }
         ];
 
@@ -1105,7 +1105,7 @@ class RulesConfigManager {
                     { value: 'zhVision', text: '反推（中文）' },
                     { value: 'enVision', text: '反推（英文）' },
                     { value: 'video', text: '视频反推' },
-                    { value: 'fusion', text: '多图融合' }
+                    { value: 'fusion', text: '多媒体参考' }
                 ];
                 const typeSelect = createSelectGroup('规则类型', typeOptions, defaultType);
                 typeSelect.group.style.marginBottom = '10px';

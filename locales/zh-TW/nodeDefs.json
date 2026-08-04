@@ -253,7 +253,7 @@
             },
             "rule": {
                 "name": "规则预设",
-                "tooltip": "选择多图融合规则"
+                "tooltip": "選擇多媒體參考規則"
             },
             "custom_rule": {
                 "name": "自定义规则",
