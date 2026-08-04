@@ -25,6 +25,22 @@
 ## **📣更新**
 
 <details open>
+<summary><strong>[2026-08-04] 🔥当前开发版</strong></summary>
+
+**Changes:**
+* **MiniMax H3 多媒体参考**：多媒体参考融合提示词节点统一使用 `images`、`videos`、`audios` 批次/列表端口，支持 MiniMax H3 Ref2VA 图片、视频、音频引用和六段式提示词输出。
+* **正确处理图像批次**：连接包含多张图的 `IMAGE` batch 时，节点会沿批次维逐张读取，不再把整批 Tensor 当成单张图处理。
+* **Google Cloud 翻译**：新增官方 Cloud Translation Basic v2，可用于小助手、翻译节点和节点帮助文档翻译。
+* **Google 网页翻译（免 Key）**：无需账号或 API Key；JSON 网页端点被限流时会自动回退到 Google 轻量网页端点。
+* **翻译服务同步**：设置页面、翻译按钮右键菜单、翻译节点和节点帮助翻译可使用同一翻译服务选择。
+
+**Fixes:**
+* 修复选择 Google 翻译后服务配置被错误保存为百度翻译的问题。
+* 修复多图输出节点连接到多媒体参考融合节点时可能出现的批次维度错误。
+
+</details>
+
+<details>
 <summary><strong>[2026-07-21] 🔥V2.1.2</strong></summary>
 
 **Changes:**
@@ -458,6 +474,34 @@
 **Google 网页翻译（免 Key）：**
 
 `无需 Google Cloud 项目或 API Key，可直接在翻译服务中选择“Google网页翻译（免Key）”。该服务使用 Google 网页翻译端点，并非官方承诺稳定的开发者 API，可能被限速或因网页接口调整而暂时不可用，适合个人低频使用。`
+
+### Google 翻译使用方法
+
+#### 方法一：小助手翻译
+
+1. 重启 ComfyUI，使新增后端路由和前端脚本生效。
+2. 打开 `ComfyUI 设置 → ✨提示词小助手 → 配置 → 翻译 → 选择翻译服务`。
+3. 选择 `Google网页翻译（免Key）` 或 `Google翻译`。
+4. 在文本输入框旁点击小助手的翻译按钮；也可右键翻译按钮临时切换服务。
+
+#### 方法二：翻译节点
+
+添加 `✨Prompt Assistant → 提示词翻译` 节点，在 `translate_service` 中选择：
+
+* `Google网页翻译（免Key）`：无需配置，适合个人低频使用。
+* `Google翻译`：使用官方 Cloud Translation API，需先填写 API Key。
+* `百度翻译` 或已配置的大语言模型：保持原有使用方式。
+
+#### Google Cloud API 配置
+
+1. 在 Google Cloud 创建项目并启用 [Cloud Translation API](https://console.cloud.google.com/apis/library/translate.googleapis.com)。
+2. 为项目开启结算并创建 API Key，建议将该 Key 限制为仅允许 Cloud Translation API。
+3. 打开提示词小助手的 `API配置 → Google翻译`，填写 API Key。
+4. 在翻译服务中选择 `Google翻译`。
+
+#### 免 Key 模式说明
+
+`Google网页翻译（免Key）` 会将长文本按段落拆分，并优先请求 Google 的网页 JSON 端点；遇到限流或响应格式异常时自动尝试轻量网页端点。该模式不是 Google 官方开发者 API，如果出现 `HTTP 429`，请降低请求频率、稍后重试，或改用 Google Cloud 翻译。
 
 
 **​智谱（大语言模型模型）：​**[智谱API申请入口](https://www.bigmodel.cn/invite?icode=Wz1tQAT40T9M8vwp%2F1db7nHEaazDlIZGj9HxftzTbt4%3D)
