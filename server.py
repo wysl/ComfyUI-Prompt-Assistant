@@ -23,6 +23,10 @@ from .utils.common import (
     log_prepare, TASK_TRANSLATE, TASK_EXPAND, TASK_IMAGE_CAPTION, SOURCE_FRONTEND
 )
 from .utils.video import extract_frame_by_index, get_video_frame_info
+from .utils.reference_prompt_library import (
+    ReferencePromptError,
+    list_reference_directory,
+)
 
 # 动态获取插件目录名作为路由前缀的基础
 # 这样即使文件夹被重命名（例如加上 comfyui- 前缀），路由也会自动适配
@@ -70,6 +74,23 @@ def get_result_text(result):
     if 'text' in result and isinstance(result['text'], str):
         return result['text']
     return ''
+
+# ---多媒体参考提示词库---
+
+@PromptServer.instance.routes.get(f'{API_PREFIX}/reference_prompts/list')
+async def list_reference_prompts(request):
+    """列出固定用户目录下某一级的子目录和 TXT 文件。"""
+    try:
+        relative_path = request.query.get('path', '')
+        return web.json_response({
+            "success": True,
+            **list_reference_directory(relative_path),
+        })
+    except ReferencePromptError as error:
+        return web.json_response({"success": False, "error": str(error)}, status=400)
+    except Exception as error:
+        print(f"{ERROR_PREFIX} 读取多媒体参考提示词目录失败 | 错误:{error}")
+        return web.json_response({"success": False, "error": str(error)}, status=500)
 
 # ---流式进度设置API---
 

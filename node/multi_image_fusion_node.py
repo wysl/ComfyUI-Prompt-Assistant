@@ -198,6 +198,17 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     default="",
                     tooltip="Custom rule content, only used when Custom Rule is enabled",
                 ),
+                io.String.Input(
+                    "reference_prompt_content",
+                    optional=True,
+                    multiline=True,
+                    default="",
+                    force_input=True,
+                    tooltip=(
+                        "Connect the Multimedia Reference Prompt Library output. "
+                        "This supplements the selected rule and never replaces it."
+                    ),
+                ),
                 io.Combo.Input(
                     "output_style",
                     options=[
@@ -262,6 +273,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         rule=None,
         custom_rule=None,
         custom_rule_content=None,
+        reference_prompt_content=None,
         output_style=None,
         vlm_service=None,
         ollama_auto_unload=None,
@@ -272,6 +284,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         rule = unwrap_scalar(rule, "")
         custom_rule = unwrap_scalar(custom_rule, False)
         custom_rule_content = unwrap_scalar(custom_rule_content, "") or ""
+        reference_prompt_content = unwrap_scalar(reference_prompt_content, "") or ""
         output_style = unwrap_scalar(output_style, "Auto")
         vlm_service = unwrap_scalar(vlm_service, "")
         ollama_auto_unload = unwrap_scalar(ollama_auto_unload, True)
@@ -279,6 +292,9 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         seed = unwrap_scalar(seed, 0)
         desc_hash = hashlib.md5(fusion_description.encode("utf-8")).hexdigest()
         rule_hash = hashlib.md5(custom_rule_content.encode("utf-8")).hexdigest()
+        reference_prompt_hash = hashlib.md5(
+            reference_prompt_content.encode("utf-8")
+        ).hexdigest()
         media_hash = reference_hash(
             images,
             videos,
@@ -291,6 +307,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 rule,
                 bool(custom_rule),
                 rule_hash,
+                reference_prompt_hash,
                 output_style,
                 vlm_service,
                 bool(ollama_auto_unload),
@@ -360,12 +377,28 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         return DEFAULT_FUSION_RULE, "Default Fusion Rule"
 
     @classmethod
+    def _format_reference_prompt_block(cls, content: str) -> str:
+        reference = (content or "").strip()
+        if not reference:
+            return ""
+        return (
+            "[High-priority selected reference material]\n"
+            "Fuse all relevant details from the selected files into the result. "
+            "Explicit user requirements take priority. Treat these files as detailed guidance, "
+            "not as text to copy mechanically: do not carry over fixed identities, clothing, "
+            "scenes, dialogue, duration, or aspect ratio when they conflict with the current task. "
+            "When selected files conflict with each other, a later file has higher priority.\n\n"
+            f"{reference}\n\n"
+        )
+
+    @classmethod
     def _build_prompt(
         cls,
         rule_content: str,
         fusion_description: str,
         image_count: int,
         output_style: str,
+        reference_prompt_content: str = "",
     ) -> str:
         style = (output_style or "Auto").strip()
         style_hint = {
@@ -388,6 +421,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             f"[输入参考图说明]\n共 {image_count} 张，按顺序提供。\n{ref_lines}\n\n"
             f"[输出风格偏好]\n{style_hint}\n\n"
             f"{cls._format_user_intent_block(fusion_description)}\n\n"
+            f"{cls._format_reference_prompt_block(reference_prompt_content)}"
             "请综合以上参考图与用户意图，输出最终融合提示词。\n"
             "再次强调：最终正文必须是流畅完整的单画面描述；\n"
             "严禁出现‘图1/图2/Image 1/Image 2/参考图1’等字样；\n"
@@ -403,6 +437,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         audio_count: int,
         payload_labels: List[str],
         additional_rule: str = "",
+        reference_prompt_content: str = "",
     ) -> str:
         reference_lines = [
             f"- <Picture {index}>: reference image {index}"
@@ -432,6 +467,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             "[User intent]\n"
             f"{intent}"
             f"{additional_rule_block}\n\n"
+            f"{cls._format_reference_prompt_block(reference_prompt_content)}"
             "Use all relevant references in a single coherent target video. Keep the reference labels in the final text; "
             "do not replace them with generic words such as image or source."
         )
@@ -497,6 +533,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         rule=None,
         custom_rule=None,
         custom_rule_content=None,
+        reference_prompt_content=None,
         output_style=None,
         video_frames_per_ref=None,
         vlm_service=None,
@@ -511,6 +548,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             rule = unwrap_scalar(rule, "") or ""
             custom_rule = bool(unwrap_scalar(custom_rule, False))
             custom_rule_content = unwrap_scalar(custom_rule_content, "") or ""
+            reference_prompt_content = unwrap_scalar(reference_prompt_content, "") or ""
             output_style = unwrap_scalar(output_style, "Auto") or "Auto"
             video_frames_per_ref = int(unwrap_scalar(video_frames_per_ref, 3) or 3)
             vlm_service = unwrap_scalar(vlm_service, "") or ""
@@ -599,6 +637,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     audio_count=len(audios),
                     payload_labels=payload_labels,
                     additional_rule=custom_rule_content if custom_rule else "",
+                    reference_prompt_content=reference_prompt_content,
                 )
                 reference_manifest = build_h3_reference_manifest(
                     len(image_frames), videos, audios, payload_labels, fusion_description
@@ -614,6 +653,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     fusion_description=fusion_description,
                     image_count=len(images_data),
                     output_style=output_style,
+                    reference_prompt_content=reference_prompt_content,
                 )
                 reference_manifest = cls._build_image_roles_text(
                     len(images_data), fusion_description
@@ -643,6 +683,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "音频参考": len(audios),
                     "VLM视觉载荷": len(images_data),
                     "输出风格": output_style,
+                    "自备提示词参考": "已连接" if reference_prompt_content.strip() else "未连接",
                 },
             )
 

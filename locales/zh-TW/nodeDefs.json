@@ -260,12 +260,20 @@
                 "tooltip": "启用下方自定义规则"
             },
             "custom_rule_content": {
-                "name": "自定义规则内容",
-                "tooltip": "自定义规则正文"
+                "name": "自定義規則內容",
+                "tooltip": "自定義規則正文"
+            },
+            "reference_prompt_content": {
+                "name": "自備提示詞參考",
+                "tooltip": "連接多媒體參考提示詞庫的參考內容；作為高優先級細節參考，不取代目前規則"
             },
             "output_style": {
-                "name": "输出风格",
-                "tooltip": "自然语言 / Tags / 编辑指令"
+                "name": "輸出風格",
+                "tooltip": "一般融合風格，或保留媒體引用標籤的 MiniMax H3 Ref2VA 格式"
+            },
+            "video_frames_per_ref": {
+                "name": "每段影片抽幀數",
+                "tooltip": "H3 模式下，每段參考影片傳給視覺模型的代表幀數"
             },
             "vlm_service": {
                 "name": "视觉服务",
@@ -292,6 +300,26 @@
             "2": {
                 "name": "预览图像",
                 "tooltip": "实际送入模型的参考图预览"
+            }
+        }
+    },
+    "MultimediaReferencePromptLibraryNode": {
+        "display_name": "✨多媒體參考提示詞庫",
+        "description": "從多層目錄中選擇並依序合併自備 TXT 提示詞",
+        "inputs": {
+            "selected_files": {
+                "name": "已選提示詞檔案",
+                "tooltip": "依優先級順序儲存的相對路徑清單；後選或後置檔案的衝突內容優先"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "參考提示詞內容",
+                "tooltip": "連接到多媒體參考融合提示詞節點的自備提示詞參考輸入"
+            },
+            "1": {
+                "name": "已選檔案清單",
+                "tooltip": "依序排列的已選檔案相對路徑 JSON"
             }
         }
     }

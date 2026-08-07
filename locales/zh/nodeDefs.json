@@ -263,6 +263,10 @@
                 "name": "自定义规则内容",
                 "tooltip": "自定义规则正文"
             },
+            "reference_prompt_content": {
+                "name": "自备提示词参考",
+                "tooltip": "连接多媒体参考提示词库的参考内容；作为高优先级细节参考，不替换当前规则"
+            },
             "output_style": {
                 "name": "输出风格",
                 "tooltip": "普通融合风格，或保留媒体引用标签的 MiniMax H3 Ref2VA 格式"
@@ -296,6 +300,26 @@
             "2": {
                 "name": "视觉参考预览",
                 "tooltip": "实际送入视觉模型的图片和视频抽帧"
+            }
+        }
+    },
+    "MultimediaReferencePromptLibraryNode": {
+        "display_name": "✨多媒体参考提示词库",
+        "description": "从多级目录中选择并按顺序合并自备 TXT 提示词",
+        "inputs": {
+            "selected_files": {
+                "name": "已选提示词文件",
+                "tooltip": "按优先级顺序保存的相对路径列表；后选或后置文件的冲突内容优先"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "参考提示词内容",
+                "tooltip": "连接到多媒体参考融合提示词节点的自备提示词参考输入"
+            },
+            "1": {
+                "name": "已选文件清单",
+                "tooltip": "按顺序排列的已选文件相对路径 JSON"
             }
         }
     }

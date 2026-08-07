@@ -12,6 +12,7 @@ from .node.kontext_preset_node import KontextPresetNode
 from .node.expand_node import PromptExpand
 from .node.video_caption_node import VideoCaptionNode
 from .node.multi_image_fusion_node import MultiImageFusionNode
+from .node.reference_prompt_library_node import MultimediaReferencePromptLibraryNode
 
 WEB_DIRECTORY = "./js"
 
@@ -75,6 +76,7 @@ class PromptAssistantExtension(ComfyExtension):
             PromptTranslate,
             PromptExpand,
             VideoCaptionNode,
+            MultimediaReferencePromptLibraryNode,
             MultiImageFusionNode,
         ]
 

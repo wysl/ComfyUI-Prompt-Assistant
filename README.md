@@ -29,6 +29,7 @@
 
 **Changes:**
 * **MiniMax H3 多媒体参考**：多媒体参考融合提示词节点统一使用 `images`、`videos`、`audios` 批次/列表端口，支持 MiniMax H3 Ref2VA 图片、视频、音频引用和六段式提示词输出。
+* **自备提示词参考库**：新增多媒体参考提示词库节点，可从多级目录跨目录多选 TXT 文件，调整融合优先级后接入多媒体参考融合提示词节点。
 * **正确处理图像批次**：连接包含多张图的 `IMAGE` batch 时，节点会沿批次维逐张读取，不再把整批 Tensor 当成单张图处理。
 * **Google Cloud 翻译**：新增官方 Cloud Translation Basic v2，可用于小助手、翻译节点和节点帮助文档翻译。
 * **Google 网页翻译（免 Key）**：无需账号或 API Key；JSON 网页端点被限流时会自动回退到 Google 轻量网页端点。
@@ -390,6 +391,34 @@
 `节点统一使用 images、videos、audios 三个批次/列表端口，不再提供“图像1/图像2”这类固定数量端口。普通模式可接 IMAGE batch 或 ComfyUI 图像列表输出，节点会在一次执行中读取全部图片，生成流畅完整的单画面描述，并删除“图1/图2”等来源标签。`
 
 `MiniMax H3 Ref2VA 模式通过 videos 和 audios 列表/批次端口支持最多9张参考图、3段参考视频和3段参考音频；视频会抽取代表帧供视觉模型理解，音频批次会按波形批次维拆分并读取时长，再依据融合描述安排用途。输出严格使用 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六个部分，可直接连接 MiniMax H3 Reference to Video 节点的 prompt 输入。`
+
+#### **🔹多媒体参考提示词库节点**
+`✨Prompt Assistant → 多媒体参考提示词库`
+
+将自备提示词 `.txt` 文件按任意多级目录放入：
+
+```text
+ComfyUI/user/default/prompt-assistant/rules/multimedia_reference/
+├─ 表情/
+│  ├─ 害羞.txt
+│  └─ 嗔怪.txt
+└─ 镜头/
+   └─ 特写/
+      └─ 面部特写.txt
+```
+
+打开节点上的“选择参考提示词”窗口后，根目录只显示目录；进入某个目录后，只显示该层的子目录和 TXT 文件。已选文件在切换目录后仍会保留，可在“已选”视图中上移、下移或移除。文件顺序同时也是冲突优先级：越靠后的文件优先级越高。
+
+连接方式：
+
+```text
+多媒体参考提示词库.reference_content
+    → 多媒体参考融合提示词.reference_prompt_content（自备提示词参考）
+```
+
+自备提示词只作为大模型的高优先级细节参考，不会替换“规则预设”或已启用的“自定义规则”。明确填写的“融合描述”优先级最高；参考文件中的固定人物身份、服装、场景、对白、时长或画幅若与本次要求冲突，不会被机械照搬。普通融合和 MiniMax H3 模式均支持该输入。
+
+文本支持 UTF-8、带 BOM 的 UTF-8 和 GB18030 编码。单个文件最大 64 KB，一次所选文件合计最大 256 KB；只读取上述固定目录内的 `.txt` 文件。
 
 
 ## **📦 安装方法**

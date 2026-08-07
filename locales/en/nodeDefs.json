@@ -263,6 +263,10 @@
                 "name": "Custom Rule Content",
                 "tooltip": "Custom rule text"
             },
+            "reference_prompt_content": {
+                "name": "Custom Prompt Reference",
+                "tooltip": "Connect reference content from the multimedia prompt library; it supplements the current rule without replacing it"
+            },
             "output_style": {
                 "name": "Output Style",
                 "tooltip": "Standard fusion styles or MiniMax H3 Ref2VA with preserved media labels"
@@ -296,6 +300,26 @@
             "2": {
                 "name": "Visual Reference Preview",
                 "tooltip": "Images and sampled video frames actually sent to the vision model"
+            }
+        }
+    },
+    "MultimediaReferencePromptLibraryNode": {
+        "display_name": "✨Multimedia Reference Prompt Library",
+        "description": "Select and combine custom TXT prompts from nested directories in a defined order",
+        "inputs": {
+            "selected_files": {
+                "name": "Selected Prompt Files",
+                "tooltip": "Ordered relative-path list; later files take priority when selected references conflict"
+            }
+        },
+        "outputs": {
+            "0": {
+                "name": "Reference Prompt Content",
+                "tooltip": "Connect to Custom Prompt Reference on the multimedia reference fusion node"
+            },
+            "1": {
+                "name": "Selected File Manifest",
+                "tooltip": "Ordered JSON list of selected relative file paths"
             }
         }
     }
