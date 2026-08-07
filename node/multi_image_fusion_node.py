@@ -112,6 +112,38 @@ Absolute requirements
 """
 
 
+H3_T2V_RULE = """Role
+You are a MiniMax H3 text-to-video prompt director. Convert the user's intent
+and selected text references into one production-ready audiovisual video prompt.
+
+Absolute requirements
+1. Write the six sections below, in exactly this order:
+   subject_definitions:
+   summary:
+   retention_analysis:
+   detailed_description:
+   overall_soundscape:
+   non_diegetic_music:
+2. Write all section content in English. Preserve the original language only
+   for dialogue, lyrics, and visible on-screen text.
+3. This is text-to-video mode with no media references. Do not invent or emit
+   <Picture N>, <Video N>, <Audio N>, or source-reference labels.
+4. In subject_definitions, define reusable visible subjects as <Subject N>
+   when useful, based only on the user's text requirements.
+5. In summary, begin with [text generation].
+6. In retention_analysis, explain which user-requested details are retained;
+   do not claim that any image, video, or audio source was supplied.
+7. Make detailed_description a concrete shot-by-shot target video timeline.
+   Establish composition, appearance, environment, lighting, action, state
+   changes, camera movement, physical sound, and continuity.
+8. Use [Shot 1], [Shot 2], etc. Later shots must have increasing timestamps.
+   Write dialogue as <d>[Language] exact dialogue</d> and do not translate or
+   rewrite user-provided dialogue.
+9. Output plain text only: no Markdown headings, bullets, code fences, or
+   explanation before or after the six sections.
+"""
+
+
 class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
     """图片融合或 MiniMax H3 多媒体参考提示词节点。"""
 
@@ -439,6 +471,24 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         additional_rule: str = "",
         reference_prompt_content: str = "",
     ) -> str:
+        if image_count == 0 and video_count == 0 and audio_count == 0:
+            intent = fusion_description or (
+                "(empty; create a coherent target video from the selected text references)"
+            )
+            additional_rule_block = (
+                f"\n\n[Additional user rule]\n{additional_rule.strip()}"
+                if additional_rule and additional_rule.strip()
+                else ""
+            )
+            return (
+                f"{H3_T2V_RULE}\n\n"
+                "[User intent]\n"
+                f"{intent}"
+                f"{additional_rule_block}\n\n"
+                f"{cls._format_reference_prompt_block(reference_prompt_content)}"
+                "Create one coherent text-to-video prompt using only the supplied text."
+            )
+
         reference_lines = [
             f"- <Picture {index}>: reference image {index}"
             for index in range(1, image_count + 1)
@@ -559,10 +609,12 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             videos = collect_video_references(videos)
             audios = collect_audio_references(audios)
             is_h3 = output_style == H3_OUTPUT_STYLE
+            is_text_to_video = is_h3 and not image_frames and not videos and not audios
 
             if is_h3:
-                validate_h3_references(len(image_frames), videos, audios)
-                rule_name = H3_OUTPUT_STYLE
+                if not is_text_to_video:
+                    validate_h3_references(len(image_frames), videos, audios)
+                rule_name = "MiniMax H3 T2V" if is_text_to_video else H3_OUTPUT_STYLE
             else:
                 if videos or audios:
                     raise ValueError(
@@ -620,16 +672,21 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
 
             model_image_limit = get_model_max_images(provider_config.get("model"))
             if is_h3:
-                max_payload_images = max(1, min(model_image_limit, 32))
-                payload_tensor, payload_labels = build_visual_payload(
-                    image_frames,
-                    videos,
-                    max_payload_images=max_payload_images,
-                    frames_per_video=video_frames_per_ref,
-                )
-                images_data, preview_tensor = cls._tensor_to_data_urls(
-                    payload_tensor, max_images=payload_tensor.shape[0]
-                )
+                if is_text_to_video:
+                    images_data = []
+                    payload_labels = []
+                    preview_tensor = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
+                else:
+                    max_payload_images = max(1, min(model_image_limit, 32))
+                    payload_tensor, payload_labels = build_visual_payload(
+                        image_frames,
+                        videos,
+                        max_payload_images=max_payload_images,
+                        frames_per_video=video_frames_per_ref,
+                    )
+                    images_data, preview_tensor = cls._tensor_to_data_urls(
+                        payload_tensor, max_images=payload_tensor.shape[0]
+                    )
                 prompt_to_send = cls._build_h3_prompt(
                     fusion_description=fusion_description,
                     image_count=len(image_frames),
@@ -639,9 +696,15 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     additional_rule=custom_rule_content if custom_rule else "",
                     reference_prompt_content=reference_prompt_content,
                 )
-                reference_manifest = build_h3_reference_manifest(
-                    len(image_frames), videos, audios, payload_labels, fusion_description
-                )
+                if is_text_to_video:
+                    reference_manifest = (
+                        "MiniMax H3 T2V: no image, video, or audio references.\n"
+                        f"User intent: {fusion_description or '(empty)'}"
+                    )
+                else:
+                    reference_manifest = build_h3_reference_manifest(
+                        len(image_frames), videos, audios, payload_labels, fusion_description
+                    )
             else:
                 batch = normalize_frames(image_frames)
                 max_images = max(2, min(model_image_limit, 8))
@@ -683,6 +746,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "音频参考": len(audios),
                     "VLM视觉载荷": len(images_data),
                     "输出风格": output_style,
+                    "生成模式": "T2V" if is_text_to_video else "媒体参考融合",
                     "自备提示词参考": "已连接" if reference_prompt_content.strip() else "未连接",
                 },
             )

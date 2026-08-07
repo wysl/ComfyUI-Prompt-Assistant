@@ -237,7 +237,7 @@
         "inputs": {
             "images": {
                 "name": "Images Batch",
-                "tooltip": "IMAGE batch or ComfyUI IMAGE list; all references are read in batch/list order"
+                "tooltip": "Optional IMAGE batch or list; H3 automatically uses T2V when all three media inputs are empty"
             },
             "videos": {
                 "name": "Videos Batch",
@@ -269,7 +269,7 @@
             },
             "output_style": {
                 "name": "Output Style",
-                "tooltip": "Standard fusion styles or MiniMax H3 Ref2VA with preserved media labels"
+                "tooltip": "Standard fusion styles; MiniMax H3 uses T2V without media and Ref2VA when media is supplied"
             },
             "video_frames_per_ref": {
                 "name": "Frames Per Video",

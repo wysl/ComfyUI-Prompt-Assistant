@@ -47,6 +47,7 @@ def load_prompt_builder_class():
     module = ast.fix_missing_locations(ast.Module(body=[test_class], type_ignores=[]))
     namespace = {
         "H3_REF2VA_RULE": "BASE H3 RULE",
+        "H3_T2V_RULE": "BASE H3 T2V RULE",
         "List": list,
     }
     exec(compile(module, str(source_path), "exec"), namespace)
@@ -141,6 +142,20 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("ADDITIONAL RULE", prompt)
         self.assertIn("SELECTED DETAIL", prompt)
         self.assertIn("later file has higher priority", prompt)
+
+    def test_h3_without_media_builds_text_to_video_prompt(self):
+        prompt = self.builder._build_h3_prompt(
+            fusion_description="USER T2V INTENT",
+            image_count=0,
+            video_count=0,
+            audio_count=0,
+            payload_labels=[],
+            reference_prompt_content="SELECTED DETAIL",
+        )
+        self.assertIn("BASE H3 T2V RULE", prompt)
+        self.assertIn("USER T2V INTENT", prompt)
+        self.assertIn("SELECTED DETAIL", prompt)
+        self.assertNotIn("BASE H3 RULE", prompt)
 
 
 if __name__ == "__main__":

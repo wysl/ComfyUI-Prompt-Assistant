@@ -237,7 +237,7 @@
         "inputs": {
             "images": {
                 "name": "圖像批次",
-                "tooltip": "IMAGE 批次或 ComfyUI IMAGE 列表，按批次/列表順序讀取全部參考圖"
+                "tooltip": "可選。IMAGE 批次或 ComfyUI IMAGE 列表；H3 模式下三個媒體批次全空時自動使用 T2V"
             },
             "videos": {
                 "name": "影片批次",
@@ -269,7 +269,7 @@
             },
             "output_style": {
                 "name": "輸出風格",
-                "tooltip": "一般融合風格，或保留媒體引用標籤的 MiniMax H3 Ref2VA 格式"
+                "tooltip": "一般融合風格；MiniMax H3 在無媒體時使用 T2V，有媒體時使用 Ref2VA"
             },
             "video_frames_per_ref": {
                 "name": "每段影片抽幀數",

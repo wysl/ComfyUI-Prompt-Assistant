@@ -134,9 +134,12 @@ class VisionService(OpenAICompatibleService):
             print(f"{PREFIX} 🐏 视觉请求 | 图片数量:{len(images_b64)} | num_ctx:{num_ctx} | 模型:{model}")
             
             # 构建基础请求体
+            user_message = {"role": "user", "content": system_prompt}
+            if images_b64:
+                user_message["images"] = images_b64
             payload = {
                 "model": model,
-                "messages": [{"role": "user", "content": system_prompt, "images": images_b64}],
+                "messages": [user_message],
                 "stream": True
             }
             
@@ -581,16 +584,22 @@ class VisionService(OpenAICompatibleService):
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             
-            multi_content = [{
-                "type": "text",
-                "text": (
-                    f"There are {len(processed_images)} reference images below, ordered as Image 1..Image {len(processed_images)}. "
-                    "Use these labels when combining them into one final scene/prompt."
-                )
-            }]
-            for idx, img in enumerate(processed_images, 1):
-                multi_content.append({"type": "text", "text": f"Image {idx}:"})
-                multi_content.append({"type": "image_url", "image_url": {"url": img}})
+            if processed_images:
+                multi_content = [{
+                    "type": "text",
+                    "text": (
+                        f"There are {len(processed_images)} reference images below, ordered as Image 1..Image {len(processed_images)}. "
+                        "Use these labels when combining them into one final scene/prompt."
+                    )
+                }]
+                for idx, img in enumerate(processed_images, 1):
+                    multi_content.append({"type": "text", "text": f"Image {idx}:"})
+                    multi_content.append({"type": "image_url", "image_url": {"url": img}})
+            else:
+                multi_content = [{
+                    "type": "text",
+                    "text": "Follow the text instructions above. No reference images were supplied."
+                }]
             messages.append({"role": "user", "content": multi_content})
             
             # 检查disable_thinking、enable_advanced_params和filter_thinking_output配置
