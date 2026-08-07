@@ -121,6 +121,39 @@ class ConfigManager:
         print(f"\r{_ANSI_CLEAR_EOL}✨ {msg}", flush=True)
 
     # ---模板加载---
+    def _hydrate_prompt_content_files(self, data: dict) -> None:
+        """Resolve built-in prompt content files under the template directory."""
+        template_root = os.path.realpath(self.templates_dir)
+        prompt_types = (
+            "expand_prompts",
+            "vision_prompts",
+            "video_prompts",
+            "fusion_prompts",
+            "translate_prompts",
+        )
+        for prompt_type in prompt_types:
+            prompts = data.get(prompt_type, {})
+            if not isinstance(prompts, dict):
+                continue
+            for prompt_id, prompt in prompts.items():
+                if not isinstance(prompt, dict):
+                    continue
+                relative_path = prompt.pop("content_file", None)
+                if not relative_path:
+                    continue
+                try:
+                    content_path = os.path.realpath(
+                        os.path.join(template_root, str(relative_path))
+                    )
+                    if os.path.commonpath((content_path, template_root)) != template_root:
+                        raise ValueError("规则内容文件超出模板目录")
+                    if not content_path.lower().endswith((".md", ".txt")):
+                        raise ValueError("规则内容文件只支持 Markdown 或 TXT")
+                    with open(content_path, "r", encoding="utf-8-sig") as content_file:
+                        prompt["content"] = content_file.read().strip()
+                except Exception as error:
+                    self._log(f"加载内置规则文件 {prompt_id} 失败: {error}")
+
     def _load_template(self, template_name: str, fallback: dict = None) -> dict:
         """
         从模板文件加载默认配置
@@ -136,6 +169,8 @@ class ConfigManager:
         try:
             with open(template_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+                if template_name == "system_prompts":
+                    self._hydrate_prompt_content_files(data)
                 # 获取版本号并保存，用于后续比对
                 template_version = data.get("__config_version", "2.0")
                 self._template_versions[template_name] = template_version

@@ -117,6 +117,18 @@ non_diegetic_music: N/A"""
         with self.assertRaisesRegex(ValueError, "invented <Video 1>"):
             multimedia_reference.sanitize_h3_prompt(prompt, 1, 0, 1)
 
+    def test_h3_t2va_validation_uses_three_core_fields(self):
+        prompt = """integrated_multimodal_description: [Shot 1] A close-up portrait moves naturally.
+overall_soundscape: Quiet room tone.
+non_diegetic_music: N/A"""
+        result = multimedia_reference.sanitize_h3_prompt(prompt, 0, 0, 0)
+        self.assertIn("integrated_multimodal_description:", result)
+
+        with self.assertRaisesRegex(ValueError, "Ref2VA-only fields"):
+            multimedia_reference.sanitize_h3_prompt(
+                prompt + "\nsummary: [reference generation] invalid", 0, 0, 0
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

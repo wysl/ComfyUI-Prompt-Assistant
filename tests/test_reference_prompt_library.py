@@ -130,6 +130,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
 
     def test_h3_prompt_keeps_h3_rule_and_adds_reference(self):
         prompt = self.builder._build_h3_prompt(
+            rule_content="SELECTED H3 RULE",
             fusion_description="USER INTENT",
             image_count=1,
             video_count=0,
@@ -138,6 +139,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
             additional_rule="ADDITIONAL RULE",
             reference_prompt_content="SELECTED DETAIL",
         )
+        self.assertIn("SELECTED H3 RULE", prompt)
         self.assertIn("BASE H3 RULE", prompt)
         self.assertIn("ADDITIONAL RULE", prompt)
         self.assertIn("SELECTED DETAIL", prompt)
@@ -145,6 +147,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
 
     def test_h3_without_media_builds_text_to_video_prompt(self):
         prompt = self.builder._build_h3_prompt(
+            rule_content="SELECTED H3 RULE",
             fusion_description="USER T2V INTENT",
             image_count=0,
             video_count=0,
@@ -153,6 +156,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
             reference_prompt_content="SELECTED DETAIL",
         )
         self.assertIn("BASE H3 T2V RULE", prompt)
+        self.assertIn("SELECTED H3 RULE", prompt)
         self.assertIn("USER T2V INTENT", prompt)
         self.assertIn("SELECTED DETAIL", prompt)
         self.assertNotIn("BASE H3 RULE", prompt)

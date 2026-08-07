@@ -298,25 +298,53 @@ def build_h3_reference_manifest(
 def sanitize_h3_prompt(
     prompt: str, image_count: int, video_count: int, audio_count: int
 ) -> str:
-    """Validate the H3 six-section contract and its media reference labels."""
+    """Validate the H3 T2VA or Ref2VA structure and media labels."""
     text = (prompt or "").strip()
     text = re.sub(r"^```(?:text|markdown)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
+    is_t2va = image_count == 0 and video_count == 0 and audio_count == 0
     required = (
-        "subject_definitions:",
-        "summary:",
-        "retention_analysis:",
-        "detailed_description:",
-        "overall_soundscape:",
-        "non_diegetic_music:",
+        (
+            "integrated_multimodal_description:",
+            "overall_soundscape:",
+            "non_diegetic_music:",
+        )
+        if is_t2va
+        else (
+            "subject_definitions:",
+            "summary:",
+            "retention_analysis:",
+            "detailed_description:",
+            "overall_soundscape:",
+            "non_diegetic_music:",
+        )
     )
     lowered = text.lower()
     missing = [section for section in required if section not in lowered]
     if missing:
         raise ValueError(
-            "MiniMax H3 Ref2VA output is missing required sections: "
+            "MiniMax H3 output is missing required sections: "
             + ", ".join(missing)
         )
+
+    if is_t2va:
+        forbidden_fields = (
+            "subject_definitions",
+            "summary",
+            "retention_analysis",
+            "detailed_description",
+        )
+        found_forbidden = [
+            field
+            for field in forbidden_fields
+            if re.search(rf"(?im)^\s*{field}\s*:", text)
+        ]
+        if found_forbidden or re.search(r"<Subject\s+\d+>", text, flags=re.IGNORECASE):
+            details = found_forbidden or ["<Subject N>"]
+            raise ValueError(
+                "MiniMax H3 T2VA output contains Ref2VA-only fields: "
+                + ", ".join(details)
+            )
 
     missing_labels: List[str] = []
     invented_labels: List[str] = []

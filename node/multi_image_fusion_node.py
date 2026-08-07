@@ -73,75 +73,18 @@ DEFAULT_FUSION_RULE = """Role
 """
 
 
-H3_REF2VA_RULE = """Role
-You are a MiniMax H3 Ref2VA prompt director. Convert the supplied multimedia
-references and user intent into one production-ready audiovisual video prompt.
-
-Absolute requirements
-1. Write the six sections below, in exactly this order:
-   subject_definitions:
-   summary:
-   retention_analysis:
-   detailed_description:
-   overall_soundscape:
-   non_diegetic_music:
-2. Write all section content in English. Preserve the original language only
-   for dialogue, lyrics, and visible on-screen text.
-3. Use the supplied labels exactly and consistently: <Picture N>, <Video N>,
-   <Audio N>, and derived reusable visible subjects as <Subject N>.
-4. Never renumber, omit, or invent a source reference. A source label must not
-   exceed the supplied reference counts.
-5. In subject_definitions, define reusable people, objects, environments,
-   styles, actions, or voices and state which source reference provides them.
-6. In summary, begin with applicable task types in square brackets, chosen from
-   reference generation, keyframe completion, video editing, video
-   continuation, audio reuse, and audio reference.
-7. In retention_analysis, describe how each used reference is preserved,
-   transferred, copied, or referenced.
-8. Make detailed_description a concrete shot-by-shot target video timeline.
-   Establish composition, appearance, environment, lighting, action, state
-   changes, camera movement, physical sound, and where each reference applies.
-9. Use [Shot 1], [Shot 2], etc. Later shots must have increasing timestamps.
-   Write dialogue as <d>[Language] exact dialogue</d> and do not translate or
-   rewrite user-provided dialogue.
-10. Audio waveforms are not directly available to the vision model. Use only
-    the user intent and supplied audio metadata for <Audio N>; do not invent
-    exact speech, lyrics, or sound content that was not specified.
-11. Output plain text only: no Markdown headings, bullets, code fences, or
-    explanation before or after the six sections.
-"""
+H3_REF2VA_RULE = """[Execution mode: Full-Reference / Ref2VA]
+Media references are present. Follow the Full-Reference six-section structure
+from the selected MiniMax-H3 rule. Use every supplied media label exactly once
+or more where relevant, never renumber or invent labels, and do not infer exact
+audio speech, lyrics, or sound content that the user did not describe."""
 
 
-H3_T2V_RULE = """Role
-You are a MiniMax H3 text-to-video prompt director. Convert the user's intent
-and selected text references into one production-ready audiovisual video prompt.
-
-Absolute requirements
-1. Write the six sections below, in exactly this order:
-   subject_definitions:
-   summary:
-   retention_analysis:
-   detailed_description:
-   overall_soundscape:
-   non_diegetic_music:
-2. Write all section content in English. Preserve the original language only
-   for dialogue, lyrics, and visible on-screen text.
-3. This is text-to-video mode with no media references. Do not invent or emit
-   <Picture N>, <Video N>, <Audio N>, or source-reference labels.
-4. In subject_definitions, define reusable visible subjects as <Subject N>
-   when useful, based only on the user's text requirements.
-5. In summary, begin with [text generation].
-6. In retention_analysis, explain which user-requested details are retained;
-   do not claim that any image, video, or audio source was supplied.
-7. Make detailed_description a concrete shot-by-shot target video timeline.
-   Establish composition, appearance, environment, lighting, action, state
-   changes, camera movement, physical sound, and continuity.
-8. Use [Shot 1], [Shot 2], etc. Later shots must have increasing timestamps.
-   Write dialogue as <d>[Language] exact dialogue</d> and do not translate or
-   rewrite user-provided dialogue.
-9. Output plain text only: no Markdown headings, bullets, code fences, or
-   explanation before or after the six sections.
-"""
+H3_T2V_RULE = """[Execution mode: T2VA]
+No image, video, or audio reference is present. Follow the T2VA three-core
+structure from the selected MiniMax-H3 rule: integrated_multimodal_description,
+overall_soundscape, then non_diegetic_music. Do not emit any Picture, Video,
+Audio, Subject, summary, retention_analysis, or detailed_description field."""
 
 
 class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
@@ -463,6 +406,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
     @classmethod
     def _build_h3_prompt(
         cls,
+        rule_content: str,
         fusion_description: str,
         image_count: int,
         video_count: int,
@@ -481,6 +425,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 else ""
             )
             return (
+                f"{rule_content.strip()}\n\n"
                 f"{H3_T2V_RULE}\n\n"
                 "[User intent]\n"
                 f"{intent}"
@@ -509,6 +454,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             else ""
         )
         return (
+            f"{rule_content.strip()}\n\n"
             f"{H3_REF2VA_RULE}\n\n"
             "[Reference inventory]\n"
             f"{chr(10).join(reference_lines)}\n\n"
@@ -614,7 +560,13 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             if is_h3:
                 if not is_text_to_video:
                     validate_h3_references(len(image_frames), videos, audios)
-                rule_name = "MiniMax H3 T2V" if is_text_to_video else H3_OUTPUT_STYLE
+                rule_content, selected_rule_name = cls._resolve_rule_content(
+                    rule,
+                    False,
+                    "",
+                )
+                mode_name = "T2VA" if is_text_to_video else "Ref2VA"
+                rule_name = f"{selected_rule_name} / {mode_name}"
             else:
                 if videos or audios:
                     raise ValueError(
@@ -688,6 +640,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                         payload_tensor, max_images=payload_tensor.shape[0]
                     )
                 prompt_to_send = cls._build_h3_prompt(
+                    rule_content=rule_content,
                     fusion_description=fusion_description,
                     image_count=len(image_frames),
                     video_count=len(videos),

@@ -68,6 +68,20 @@ class ConfigManagerTests(unittest.TestCase):
             {"service": "google_web", "model": ""},
         )
 
+    def test_minimax_h3_preset_loads_external_rule_source(self):
+        manager = object.__new__(self.config_manager_class)
+        manager.templates_dir = str(ROOT / "config")
+        manager._template_versions = {}
+        manager._log = lambda message: None
+
+        data = manager._load_template("system_prompts", {})
+        preset = data["fusion_prompts"]["fusion_minimax_h3"]
+
+        self.assertNotIn("content_file", preset)
+        self.assertIn("MiniMax-H3 视频提示词优化规则（最终版）", preset["content"])
+        self.assertIn("禁止在切换运镜/剪切之后复读", preset["content"])
+        self.assertIn("全片锁定主体运动方向与朝向", preset["content"])
+
 
 if __name__ == "__main__":
     unittest.main()
