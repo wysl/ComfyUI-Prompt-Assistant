@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import re
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import torch
 
@@ -31,11 +31,78 @@ class AudioReference:
     duration: Optional[float]
 
 
+@dataclass(frozen=True)
+class H3ContextInputs:
+    mode: str
+    prompt: str
+    images: Tuple[Any, ...]
+    videos: Tuple[Any, ...]
+    audios: Tuple[Any, ...]
+    synchronized_audio_count: int
+    synchronized_audio_video_indices: Tuple[int, ...]
+    keyframe_roles: Tuple[str, ...]
+
+
 def unwrap_scalar(value: Any, default: Any = None) -> Any:
     """Unwrap scalar widgets when a V3 node uses ``is_input_list=True``."""
     if isinstance(value, (list, tuple)):
         return value[0] if value else default
     return default if value is None else value
+
+
+def extract_h3_context_inputs(value: Any) -> Optional[H3ContextInputs]:
+    """Read the versioned interop payload exposed by MiniMax H3 Easy."""
+    context = unwrap_scalar(value)
+    if context is None:
+        return None
+    payload_provider = getattr(context, "prompt_assistant_payload", None)
+    if not callable(payload_provider):
+        raise ValueError(
+            "The connected H3 Context does not expose Prompt Assistant inputs. "
+            "Update ComfyUI-MiniMaxH3-Easy to the Prompt Assistant integration version."
+        )
+    payload = payload_provider()
+    if not isinstance(payload, Mapping):
+        raise ValueError("The connected H3 Context returned an invalid Prompt Assistant payload.")
+
+    mode = "reference" if str(payload.get("mode") or "") == "reference" else "image"
+    images = tuple(iter_input_values(payload.get("images")))
+    videos = tuple(iter_input_values(payload.get("videos")))
+    audios = tuple(iter_input_values(payload.get("audios")))
+    try:
+        synchronized_audio_count = int(payload.get("synchronized_audio_count") or 0)
+    except (TypeError, ValueError):
+        raise ValueError("The H3 Context returned invalid synchronized audio metadata.")
+    roles = tuple(str(role) for role in iter_input_values(payload.get("keyframe_roles")))
+    try:
+        synchronized_audio_video_indices = tuple(
+            int(index)
+            for index in iter_input_values(payload.get("synchronized_audio_video_indices"))
+        )
+    except (TypeError, ValueError):
+        raise ValueError("The H3 Context returned invalid synchronized audio/video metadata.")
+    if synchronized_audio_count < 0 or synchronized_audio_count > len(audios):
+        raise ValueError("The H3 Context synchronized audio metadata does not match its audio inputs.")
+    if len(synchronized_audio_video_indices) != synchronized_audio_count or any(
+        index < 1 or index > len(videos) for index in synchronized_audio_video_indices
+    ):
+        raise ValueError("The H3 Context synchronized audio/video metadata is inconsistent.")
+    if mode == "image" and (videos or audios):
+        raise ValueError("An H3 Base context cannot contain reference video or audio inputs.")
+    if mode == "image" and len(images) > 2:
+        raise ValueError("An H3 Base context supports at most two keyframe images.")
+    if roles and len(roles) != len(images):
+        raise ValueError("The H3 Context keyframe metadata does not match its image inputs.")
+    return H3ContextInputs(
+        mode=mode,
+        prompt=str(payload.get("prompt") or ""),
+        images=images,
+        videos=videos,
+        audios=audios,
+        synchronized_audio_count=synchronized_audio_count,
+        synchronized_audio_video_indices=synchronized_audio_video_indices,
+        keyframe_roles=roles,
+    )
 
 
 def iter_input_values(value: Any) -> Iterable[Any]:
@@ -193,23 +260,27 @@ def validate_h3_references(
     image_count: int,
     videos: Sequence[VideoReference],
     audios: Sequence[AudioReference],
+    synchronized_audio_count: int = 0,
 ) -> None:
+    if synchronized_audio_count < 0 or synchronized_audio_count > len(audios):
+        raise ValueError("MiniMax H3 synchronized audio metadata is invalid.")
     if image_count > H3_MAX_IMAGES:
         raise ValueError(f"MiniMax H3 supports at most {H3_MAX_IMAGES} reference images.")
     if len(videos) > H3_MAX_VIDEOS:
         raise ValueError(f"MiniMax H3 supports at most {H3_MAX_VIDEOS} reference videos.")
-    if len(audios) > H3_MAX_AUDIOS:
+    standalone_audios = audios[synchronized_audio_count:]
+    if len(standalone_audios) > H3_MAX_AUDIOS:
         raise ValueError(f"MiniMax H3 supports at most {H3_MAX_AUDIOS} reference audios.")
     if image_count == 0 and not videos:
         raise ValueError("MiniMax H3 Ref2VA needs at least one reference image or video.")
 
-    total_files = image_count + len(videos) + len(audios)
+    total_files = image_count + len(videos) + len(standalone_audios)
     if total_files > H3_MAX_TOTAL_FILES:
         raise ValueError(
             f"MiniMax H3 supports at most {H3_MAX_TOTAL_FILES} mixed reference files."
         )
 
-    for kind, references in (("video", videos), ("audio", audios)):
+    for kind, references in (("video", videos), ("audio", standalone_audios)):
         known_durations = [ref.duration for ref in references if ref.duration is not None]
         for index, duration in enumerate((ref.duration for ref in references), 1):
             if duration is None:

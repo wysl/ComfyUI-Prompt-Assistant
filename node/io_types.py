@@ -4,3 +4,4 @@ from comfy_api.latest import io
 
 
 ReferencePromptContent = io.Custom("PROMPT_ASSISTANT_REFERENCE_PROMPT")
+MiniMaxH3Context = io.Custom("MINIMAX_H3_CONTEXT")

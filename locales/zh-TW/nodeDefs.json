@@ -247,6 +247,10 @@
                 "name": "音訊批次",
                 "tooltip": "AUDIO 列表/批次，MiniMax H3 模式最多讀取3段參考音訊"
             },
+            "h3_context": {
+                "name": "H3 Context",
+                "tooltip": "連接 MiniMax H3 Easy 的 H3 Context，自動讀取原提示詞、生成模式與有序媒體輸入"
+            },
             "fusion_description": {
                 "name": "融合描述",
                 "tooltip": "可選。留空時僅根據參考圖和規則預設自動融合為單畫面提示詞"

@@ -247,6 +247,10 @@
                 "name": "Audios Batch",
                 "tooltip": "AUDIO list/batch with up to 3 reference audios in MiniMax H3 mode"
             },
+            "h3_context": {
+                "name": "H3 Context",
+                "tooltip": "Connect MiniMax H3 Easy's H3 Context to reuse its original prompt, mode, and ordered media inputs"
+            },
             "fusion_description": {
                 "name": "Fusion Description",
                 "tooltip": "Optional. Describe a single image, storyboard-image set, or MiniMax H3 video target; standard modes also support text-only generation"

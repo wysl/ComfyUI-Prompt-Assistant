@@ -36,6 +36,8 @@ from ..utils.multimedia_reference import (
     collect_audio_references,
     collect_image_frames,
     collect_video_references,
+    extract_h3_context_inputs,
+    iter_input_values,
     normalize_frames,
     reference_hash,
     sanitize_h3_prompt,
@@ -43,7 +45,7 @@ from ..utils.multimedia_reference import (
     validate_h3_references,
 )
 from .base import VLMNodeBase
-from .io_types import ReferencePromptContent
+from .io_types import MiniMaxH3Context, ReferencePromptContent
 
 
 DEFAULT_FUSION_RULE = """Role
@@ -86,6 +88,15 @@ No image, video, or audio reference is present. Follow the T2VA three-core
 structure from the selected MiniMax-H3 rule: integrated_multimodal_description,
 overall_soundscape, then non_diegetic_music. Do not emit any Picture, Video,
 Audio, Subject, summary, retention_analysis, or detailed_description field."""
+
+
+H3_BASE_KEYFRAME_RULE = """[Execution mode: H3 Base / FL2VA]
+One or two keyframe images are present. Use them as first/last-frame visual
+anchors and follow the selected MiniMax-H3 Base three-core structure:
+integrated_multimodal_description, overall_soundscape, then
+non_diegetic_music. Do not emit Picture, Video, Audio, Subject, summary,
+retention_analysis, or detailed_description fields, and do not label the
+keyframes as <Picture N>."""
 
 
 STORYBOARD_OUTPUT_STYLE = "Storyboard Images"
@@ -147,6 +158,14 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "audios",
                     optional=True,
                     tooltip="ComfyUI AUDIO list/batch containing up to 3 H3 reference audios.",
+                ),
+                MiniMaxH3Context.Input(
+                    "h3_context",
+                    optional=True,
+                    tooltip=(
+                        "Connect MiniMax H3 Easy's H3 Context output to reuse its original "
+                        "prompt, mode, and ordered media inputs automatically."
+                    ),
                 ),
                 io.String.Input(
                     "fusion_description",
@@ -248,6 +267,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         images=None,
         videos=None,
         audios=None,
+        h3_context=None,
         fusion_description=None,
         rule=None,
         custom_rule=None,
@@ -259,12 +279,23 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         video_frames_per_ref=None,
         seed=None,
     ):
+        context_inputs = extract_h3_context_inputs(h3_context)
         fusion_description = unwrap_scalar(fusion_description, "") or ""
+        if context_inputs is not None:
+            images = context_inputs.images
+            videos = context_inputs.videos
+            audios = context_inputs.audios
+            if not fusion_description.strip():
+                fusion_description = context_inputs.prompt
         rule = unwrap_scalar(rule, "")
         custom_rule = unwrap_scalar(custom_rule, False)
         custom_rule_content = unwrap_scalar(custom_rule_content, "") or ""
         reference_prompt_content = unwrap_scalar(reference_prompt_content, "") or ""
-        output_style = unwrap_scalar(output_style, "Auto")
+        output_style = (
+            H3_OUTPUT_STYLE
+            if context_inputs is not None
+            else unwrap_scalar(output_style, "Auto")
+        )
         vlm_service = unwrap_scalar(vlm_service, "")
         ollama_auto_unload = unwrap_scalar(ollama_auto_unload, True)
         video_frames_per_ref = unwrap_scalar(video_frames_per_ref, 3)
@@ -282,6 +313,10 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         return hash(
             (
                 media_hash,
+                context_inputs.mode if context_inputs is not None else "",
+                context_inputs.keyframe_roles if context_inputs is not None else (),
+                context_inputs.synchronized_audio_count if context_inputs is not None else 0,
+                context_inputs.synchronized_audio_video_indices if context_inputs is not None else (),
                 desc_hash,
                 rule,
                 bool(custom_rule),
@@ -504,8 +539,11 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         payload_labels: List[str],
         additional_rule: str = "",
         reference_prompt_content: str = "",
+        base_mode: bool = False,
+        keyframe_roles: Tuple[str, ...] = (),
+        synchronized_audio_video_indices: Tuple[int, ...] = (),
     ) -> str:
-        if image_count == 0 and video_count == 0 and audio_count == 0:
+        if base_mode or (image_count == 0 and video_count == 0 and audio_count == 0):
             intent = fusion_description or (
                 "(empty; create a coherent target video from the selected text references)"
             )
@@ -514,14 +552,36 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 if additional_rule and additional_rule.strip()
                 else ""
             )
+            if image_count:
+                roles = keyframe_roles or tuple(
+                    "first" if index == 0 else "last" for index in range(image_count)
+                )
+                keyframe_lines = "\n".join(
+                    f"- VLM Image {index}: {role}-frame visual anchor"
+                    for index, role in enumerate(roles, 1)
+                )
+                keyframe_block = (
+                    f"{H3_BASE_KEYFRAME_RULE}\n\n"
+                    "[Keyframe inventory]\n"
+                    f"{keyframe_lines}\n\n"
+                    "[VLM visual payload mapping]\n"
+                    f"{chr(10).join(payload_labels)}\n\n"
+                )
+                final_instruction = (
+                    "Create one coherent H3 Base prompt anchored to the supplied keyframes. "
+                    "Describe continuous motion between them without emitting reference labels."
+                )
+            else:
+                keyframe_block = f"{H3_T2V_RULE}\n\n"
+                final_instruction = "Create one coherent text-to-video prompt using only the supplied text."
             return (
                 f"{rule_content.strip()}\n\n"
-                f"{H3_T2V_RULE}\n\n"
+                f"{keyframe_block}"
                 "[User intent]\n"
                 f"{intent}"
                 f"{additional_rule_block}\n\n"
                 f"{cls._format_reference_prompt_block(reference_prompt_content)}"
-                "Create one coherent text-to-video prompt using only the supplied text."
+                f"{final_instruction}"
             )
 
         reference_lines = [
@@ -532,8 +592,17 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             f"- <Video {index}>: reference video {index}"
             for index in range(1, video_count + 1)
         )
+        synchronized_audio_count = len(synchronized_audio_video_indices)
         reference_lines.extend(
-            f"- <Audio {index}>: reference audio {index}; exact audio content is unknown unless the user describes it"
+            (
+                f"- <Audio {index}>: synchronized audio track of "
+                f"<Video {synchronized_audio_video_indices[index - 1]}>"
+                if index <= synchronized_audio_count
+                else (
+                    f"- <Audio {index}>: standalone reference audio {index - synchronized_audio_count}; "
+                    "exact audio content is unknown unless the user describes it"
+                )
+            )
             for index in range(1, audio_count + 1)
         )
         payload_mapping = "\n".join(f"  {line}" for line in payload_labels)
@@ -639,6 +708,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         images=None,
         videos=None,
         audios=None,
+        h3_context=None,
         fusion_description=None,
         rule=None,
         custom_rule=None,
@@ -654,6 +724,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         request_id = None
 
         try:
+            context_inputs = extract_h3_context_inputs(h3_context)
             fusion_description = (unwrap_scalar(fusion_description, "") or "").strip()
             rule = unwrap_scalar(rule, "") or ""
             custom_rule = bool(unwrap_scalar(custom_rule, False))
@@ -665,22 +736,53 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             ollama_auto_unload = bool(unwrap_scalar(ollama_auto_unload, True))
             seed = unwrap_scalar(seed, 0)
 
+            h3_base_mode = False
+            keyframe_roles: Tuple[str, ...] = ()
+            synchronized_audio_count = 0
+            synchronized_audio_video_indices: Tuple[int, ...] = ()
+            if context_inputs is not None:
+                if any(any(True for _ in iter_input_values(value)) for value in (images, videos, audios)):
+                    raise ValueError(
+                        "When H3 Context is connected, leave the separate image, video, and audio inputs disconnected."
+                    )
+                images = context_inputs.images
+                videos = context_inputs.videos
+                audios = context_inputs.audios
+                if not fusion_description:
+                    fusion_description = context_inputs.prompt.strip()
+                output_style = H3_OUTPUT_STYLE
+                h3_base_mode = context_inputs.mode == "image"
+                keyframe_roles = context_inputs.keyframe_roles
+                synchronized_audio_count = context_inputs.synchronized_audio_count
+                synchronized_audio_video_indices = context_inputs.synchronized_audio_video_indices
+
             image_frames = collect_image_frames(images)
             videos = collect_video_references(videos)
             audios = collect_audio_references(audios)
             is_h3 = output_style == H3_OUTPUT_STYLE
             is_storyboard = output_style == STORYBOARD_OUTPUT_STYLE
             is_text_to_video = is_h3 and not image_frames and not videos and not audios
+            is_h3_base = is_h3 and (h3_base_mode or is_text_to_video)
 
             if is_h3:
-                if not is_text_to_video:
-                    validate_h3_references(len(image_frames), videos, audios)
+                if is_h3_base:
+                    if videos or audios:
+                        raise ValueError("H3 Base context supports image keyframes only.")
+                    if len(image_frames) > 2:
+                        raise ValueError("H3 Base supports at most two keyframe images.")
+                else:
+                    validate_h3_references(
+                        len(image_frames),
+                        videos,
+                        audios,
+                        synchronized_audio_count=synchronized_audio_count,
+                    )
                 rule_content, selected_rule_name = cls._resolve_rule_content(
                     rule,
                     False,
                     "",
                 )
-                mode_name = "T2VA" if is_text_to_video else "Ref2VA"
+                mode_name = "T2VA" if is_text_to_video else ("FL2VA" if is_h3_base else "Ref2VA")
                 rule_name = f"{selected_rule_name} / {mode_name}"
             else:
                 if videos or audios:
@@ -750,6 +852,20 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     images_data = []
                     payload_labels = []
                     preview_tensor = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
+                elif is_h3_base:
+                    payload_tensor = normalize_frames(image_frames)
+                    roles = keyframe_roles or tuple(
+                        "first" if index == 0 else "last"
+                        for index in range(len(image_frames))
+                    )
+                    payload_labels = [
+                        f"VLM Image {index} => {role}-frame visual anchor"
+                        for index, role in enumerate(roles, 1)
+                    ]
+                    images_data, preview_tensor = cls._tensor_to_data_urls(
+                        payload_tensor,
+                        max_images=payload_tensor.shape[0],
+                    )
                 else:
                     max_payload_images = max(1, min(model_image_limit, 32))
                     payload_tensor, payload_labels = build_visual_payload(
@@ -770,10 +886,23 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     payload_labels=payload_labels,
                     additional_rule=custom_rule_content if custom_rule else "",
                     reference_prompt_content=reference_prompt_content,
+                    base_mode=is_h3_base,
+                    keyframe_roles=keyframe_roles,
+                    synchronized_audio_video_indices=synchronized_audio_video_indices,
                 )
                 if is_text_to_video:
                     reference_manifest = (
                         "MiniMax H3 T2V: no image, video, or audio references.\n"
+                        f"User intent: {fusion_description or '(empty)'}"
+                    )
+                elif is_h3_base:
+                    role_lines = "\n".join(
+                        f"{role.title()} frame: VLM Image {index}"
+                        for index, role in enumerate(roles, 1)
+                    )
+                    reference_manifest = (
+                        "MiniMax H3 Base keyframe inputs:\n"
+                        f"{role_lines}\n"
                         f"User intent: {fusion_description or '(empty)'}"
                     )
                 else:
@@ -825,7 +954,11 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "音频参考": len(audios),
                     "VLM视觉载荷": len(images_data),
                     "输出风格": output_style,
-                    "生成模式": "T2V" if is_text_to_video else "媒体参考融合",
+                    "生成模式": (
+                        "T2V"
+                        if is_text_to_video
+                        else ("FL2VA" if is_h3_base else "媒体参考融合")
+                    ),
                     "自备提示词参考": "已连接" if reference_prompt_content.strip() else "未连接",
                 },
             )
@@ -853,9 +986,9 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 if is_h3:
                     fusion_prompt = sanitize_h3_prompt(
                         fusion_prompt,
-                        image_count=len(image_frames),
-                        video_count=len(videos),
-                        audio_count=len(audios),
+                        image_count=0 if is_h3_base else len(image_frames),
+                        video_count=0 if is_h3_base else len(videos),
+                        audio_count=0 if is_h3_base else len(audios),
                     )
                 elif is_storyboard:
                     fusion_prompt = cls._sanitize_storyboard_prompt(fusion_prompt)

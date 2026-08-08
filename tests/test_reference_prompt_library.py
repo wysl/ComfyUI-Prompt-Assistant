@@ -51,8 +51,10 @@ def load_prompt_builder_class():
     namespace = {
         "H3_REF2VA_RULE": "BASE H3 RULE",
         "H3_T2V_RULE": "BASE H3 T2V RULE",
+        "H3_BASE_KEYFRAME_RULE": "BASE H3 KEYFRAME RULE",
         "STORYBOARD_OUTPUT_STYLE": "Storyboard Images",
         "List": list,
+        "Tuple": tuple,
         "re": __import__("re"),
     }
     exec(compile(module, str(source_path), "exec"), namespace)
@@ -166,6 +168,39 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("SELECTED DETAIL", prompt)
         self.assertNotIn("BASE H3 RULE", prompt)
 
+    def test_h3_reference_prompt_identifies_synchronized_video_audio(self):
+        prompt = self.builder._build_h3_prompt(
+            rule_content="SELECTED H3 RULE",
+            fusion_description="KEEP THE SOUNDTRACK",
+            image_count=0,
+            video_count=2,
+            audio_count=2,
+            payload_labels=["video payloads"],
+            synchronized_audio_video_indices=(2,),
+        )
+        self.assertIn("<Audio 1>: synchronized audio track of <Video 2>", prompt)
+        self.assertIn("<Audio 2>: standalone reference audio 1", prompt)
+
+    def test_h3_base_keyframes_use_three_core_prompt_contract(self):
+        prompt = self.builder._build_h3_prompt(
+            rule_content="SELECTED H3 RULE",
+            fusion_description="MOVE BETWEEN KEYFRAMES",
+            image_count=2,
+            video_count=0,
+            audio_count=0,
+            payload_labels=[
+                "VLM Image 1 => first-frame visual anchor",
+                "VLM Image 2 => last-frame visual anchor",
+            ],
+            base_mode=True,
+            keyframe_roles=("first", "last"),
+        )
+        self.assertIn("BASE H3 KEYFRAME RULE", prompt)
+        self.assertIn("MOVE BETWEEN KEYFRAMES", prompt)
+        self.assertIn("first-frame visual anchor", prompt)
+        self.assertIn("last-frame visual anchor", prompt)
+        self.assertNotIn("<Picture 1>", prompt)
+
     def test_storyboard_prompt_uses_independent_next_scene_contract(self):
         prompt = self.builder._build_prompt(
             rule_content="BASE SINGLE IMAGE RULE",
@@ -253,10 +288,13 @@ class ReferencePromptNodeContractTests(unittest.TestCase):
         self.assertIn(
             'io.Custom("PROMPT_ASSISTANT_REFERENCE_PROMPT")', io_types_source
         )
+        self.assertIn('io.Custom("MINIMAX_H3_CONTEXT")', io_types_source)
         self.assertIn(
             'ReferencePromptContent.Output("reference_content")', library_source
         )
         self.assertIn("ReferencePromptContent.Input(", fusion_source)
+        self.assertIn("MiniMaxH3Context.Input(", fusion_source)
+        self.assertIn('"h3_context"', fusion_source)
         self.assertIn('"reference_prompt_content"', fusion_source)
         self.assertNotIn('io.String.Output("reference_content")', library_source)
 
