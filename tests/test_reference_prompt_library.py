@@ -31,6 +31,7 @@ def load_prompt_builder_class():
         "_build_prompt",
         "_build_h3_prompt",
         "_sanitize_fusion_prompt",
+        "_sanitize_storyboard_prompt",
     }
     methods = [
         node
@@ -177,6 +178,8 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("每个分镜都是一条完整、自包含", prompt)
         self.assertIn("完整重述主体身份", prompt)
         self.assertIn("优先于上方规则中任何‘单张图’", prompt)
+        self.assertIn("`Next Scene: 正文`", prompt)
+        self.assertIn("与正文之间绝对禁止换行", prompt)
         self.assertNotIn("最终正文必须是流畅完整的单画面描述", prompt)
 
     def test_standard_prompt_supports_zero_image_text_input(self):
@@ -197,6 +200,20 @@ class ReferencePromptBuilderTests(unittest.TestCase):
             result,
             "Next Scene: first scene\n\nNext Scene: second scene",
         )
+
+    def test_storyboard_sanitizer_joins_marker_and_body_on_same_line(self):
+        result = self.builder._sanitize_storyboard_prompt(
+            "Intro that must be removed\n\n"
+            "Next Scene:\n\nfirst scene\nwith more detail\n\n"
+            "Next Scene：\nsecond scene"
+        )
+        self.assertEqual(
+            result,
+            "Next Scene: first scene with more detail\n\nNext Scene: second scene",
+        )
+        for line in result.splitlines():
+            if line:
+                self.assertRegex(line, r"^Next Scene: \S")
 
 
 class ReferencePromptNodeContractTests(unittest.TestCase):

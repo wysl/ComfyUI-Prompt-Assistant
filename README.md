@@ -392,7 +392,7 @@
 
 `节点统一使用 images、videos、audios 三个批次/列表端口，不再提供“图像1/图像2”这类固定数量端口。普通模式支持零张、单张或多张参考图；没有图片时，只要填写融合描述或连接自备提示词参考也可执行。单图风格生成流畅完整的单画面描述，并删除“图1/图2”等来源标签。`
 
-`选择 Storyboard Images 输出风格时，默认一次生成5个静态分镜（用户可在融合描述中另行指定数量）。每段严格以 Next Scene: 开头，完整重复人物身份、发型、服装和连续性细节，并改变姿态、景别、角度、构图、景深与场景细节；不会输出时间码、运镜、音频或“同上”等跨段引用。`
+`选择 Storyboard Images 输出风格时，默认一次生成5个静态分镜（用户可在融合描述中另行指定数量）。每段严格使用 Next Scene: 正文 的单行格式，节点会自动消除前缀与正文之间的换行，避免下游按行拆分时把 Next Scene: 当成独立提示词。每段完整重复人物身份、发型、服装和连续性细节，并改变姿态、景别、角度、构图、景深与场景细节；不会输出时间码、运镜、音频或“同上”等跨段引用。`
 
 `MiniMax H3 模式下，images、videos、audios 均为可选输入。三个媒体批次全部为空时自动使用纯文本 T2VA，输出 integrated_multimodal_description、overall_soundscape、non_diegetic_music 三核心；存在媒体时使用 Ref2VA，并通过 videos 和 audios 列表/批次端口支持最多9张参考图、3段参考视频和3段参考音频。视频会抽取代表帧供视觉模型理解，音频批次会按波形批次维拆分并读取时长，再依据融合描述安排用途。Ref2VA 输出使用 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式，可直接连接 MiniMax H3 节点的 prompt 输入。`
 

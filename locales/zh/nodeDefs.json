@@ -269,7 +269,7 @@
             },
             "output_style": {
                 "name": "输出风格",
-                "tooltip": "Storyboard Images 默认输出5段以 Next Scene: 开头的独立静态分镜；MiniMax H3 在无媒体时使用 T2V，有媒体时使用 Ref2VA"
+                "tooltip": "Storyboard Images 默认输出5段 Next Scene: 正文 的单行静态分镜；MiniMax H3 在无媒体时使用 T2V，有媒体时使用 Ref2VA"
             },
             "video_frames_per_ref": {
                 "name": "每段视频抽帧数",

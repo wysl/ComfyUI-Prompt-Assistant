@@ -414,7 +414,11 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 f"{intent}\n\n"
                 f"{cls._format_reference_prompt_block(reference_prompt_content)}"
                 "[强制输出格式]\n"
-                "- 每个分镜必须恰好以 `Next Scene:` 开头，分镜之间空一行。\n"
+                "- 每个分镜必须使用单独一条物理行，格式严格为 `Next Scene: 正文`。"
+                "冒号后紧跟一个空格和正文，`Next Scene:` 与正文之间绝对禁止换行。\n"
+                "- 正确示例：`Next Scene: 明媚春日的户外草坪场景……`\n"
+                "- 错误示例：先单独输出 `Next Scene:`，再换行书写正文。\n"
+                "- 每个分镜的全部正文也必须保持在该行内；不同分镜之间空一行。\n"
                 "- 不要添加标题、序号、项目符号、代码围栏或开场/结尾说明。\n"
                 "- 每个分镜都是一条完整、自包含、可单独用于静态生图的提示词。\n"
                 "- 每个分镜都要完整重述主体身份、年龄特征、发型、服装、饰品及关键连续性细节；"
@@ -557,6 +561,27 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         text = re.sub(r"\r?\n[ \t]+", "\n", text)
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip(" ，,")
+
+    @classmethod
+    def _sanitize_storyboard_prompt(cls, prompt: str) -> str:
+        """Normalize every storyboard block to one physical output line."""
+        text = cls._sanitize_fusion_prompt(prompt)
+        if not text:
+            return text
+
+        marker = re.compile(r"Next\s+Scene\s*[:：]", flags=re.IGNORECASE)
+        matches = list(marker.finditer(text))
+        if not matches:
+            return re.sub(r"\s+", " ", text).strip()
+
+        scenes = []
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            body = re.sub(r"\s+", " ", text[match.end() : end]).strip()
+            if body:
+                scenes.append(f"Next Scene: {body}")
+
+        return "\n\n".join(scenes)
 
     @classmethod
     def execute(
@@ -775,16 +800,17 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     or data.get("result")
                     or ""
                 ).strip()
-                fusion_prompt = (
-                    sanitize_h3_prompt(
+                if is_h3:
+                    fusion_prompt = sanitize_h3_prompt(
                         fusion_prompt,
                         image_count=len(image_frames),
                         video_count=len(videos),
                         audio_count=len(audios),
                     )
-                    if is_h3
-                    else cls._sanitize_fusion_prompt(fusion_prompt)
-                )
+                elif is_storyboard:
+                    fusion_prompt = cls._sanitize_storyboard_prompt(fusion_prompt)
+                else:
+                    fusion_prompt = cls._sanitize_fusion_prompt(fusion_prompt)
                 if not fusion_prompt:
                     error_msg = "API returned empty result"
                     log_error(TASK_MULTI_IMAGE_FUSION, request_id, error_msg, source=SOURCE_NODE)
