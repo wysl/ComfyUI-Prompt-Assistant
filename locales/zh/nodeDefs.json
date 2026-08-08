@@ -233,7 +233,7 @@
     },
     "MultiImageFusionNode": {
         "display_name": "✨多媒体参考融合提示词",
-        "description": "根据参考图片生成单图提示词，或根据图片、视频、音频生成 MiniMax H3 Ref2VA 提示词",
+        "description": "根据图片或文字生成单图、多分镜图片提示词，或根据图片、视频、音频生成 MiniMax H3 提示词",
         "inputs": {
             "images": {
                 "name": "图像批次",
@@ -249,7 +249,7 @@
             },
             "fusion_description": {
                 "name": "融合描述",
-                "tooltip": "可选。留空时仅根据参考图和规则预设自动融合为单画面提示词"
+                "tooltip": "可选。可描述单图、多分镜图片或 MiniMax H3 视频目标；普通模式没有图片时可仅凭此文字生成"
             },
             "rule": {
                 "name": "规则预设",
@@ -265,11 +265,11 @@
             },
             "reference_prompt_content": {
                 "name": "自备提示词参考",
-                "tooltip": "连接多媒体参考提示词库的参考内容；作为高优先级细节参考，不替换当前规则"
+                "tooltip": "仅连接多媒体参考提示词库的依附内容；作为高优先级细节参考，融合节点忽略时不会向下游透传"
             },
             "output_style": {
                 "name": "输出风格",
-                "tooltip": "普通融合风格；MiniMax H3 在无媒体时使用 T2V，有媒体时使用 Ref2VA"
+                "tooltip": "Storyboard Images 默认输出5段以 Next Scene: 开头的独立静态分镜；MiniMax H3 在无媒体时使用 T2V，有媒体时使用 Ref2VA"
             },
             "video_frames_per_ref": {
                 "name": "每段视频抽帧数",
@@ -291,7 +291,7 @@
         "outputs": {
             "0": {
                 "name": "融合提示词",
-                "tooltip": "整合后的单图提示词"
+                "tooltip": "生成的单图、多分镜图片或 MiniMax H3 提示词"
             },
             "1": {
                 "name": "参考清单",

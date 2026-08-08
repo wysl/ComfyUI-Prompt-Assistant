@@ -28,6 +28,7 @@
 <summary><strong>[2026-08-07] 🔥当前开发版</strong></summary>
 
 **Changes:**
+* **多分镜图片输出**：多媒体参考融合提示词节点新增 `Storyboard Images` 风格，默认一次生成5段以 `Next Scene:` 开头、人物连续且可独立生图的静态分镜提示词。
 * **MiniMax H3 T2V / Ref2VA**：多媒体参考融合提示词节点统一使用可选的 `images`、`videos`、`audios` 批次/列表端口；三个媒体输入全空时生成纯文本 T2V 提示词，存在媒体时生成 Ref2VA 六段式提示词。
 * **MiniMax H3 最终规则**：内置 `minimax h3` 预设更新为最终优化版，加入人脸景别、跨镜动作连续性和运动方向锁定约束；节点执行与规则管理共用同一规则源。
 * **自备提示词参考库**：新增多媒体参考提示词库节点，可从多级目录跨目录多选 TXT 文件，调整融合优先级后接入多媒体参考融合提示词节点。
@@ -323,7 +324,7 @@
 
 #### 🧩多媒体参考融合提示词
 
-`普通模式输入多张参考图，输出不含“图1/图2”来源标签的单画面提示词。选择 MiniMax H3 输出风格后，三个媒体输入全空时生成纯文本 T2V 提示词；存在媒体时组合图片、视频、音频参考，并输出带 <Picture N>、<Video N>、<Audio N>、<Subject N> 标签的 Ref2VA 六段式提示词。`
+`普通模式支持零张、单张或多张参考图：有手写描述或自备提示词参考时可纯文本生成。Storyboard Images 风格默认一次输出5段以 Next Scene: 开头、人物设定完整重复的独立静态分镜。选择 MiniMax H3 输出风格后，三个媒体输入全空时生成纯文本 T2V 提示词；存在媒体时组合图片、视频、音频参考，并输出带 <Picture N>、<Video N>、<Audio N>、<Subject N> 标签的 Ref2VA 六段式提示词。`
 
 
 #### 🔖标签、短语预设与收藏
@@ -389,7 +390,9 @@
 #### **🔹多媒体参考融合提示词节点**
 `✨Prompt Assistant → 多媒体参考融合提示词`
 
-`节点统一使用 images、videos、audios 三个批次/列表端口，不再提供“图像1/图像2”这类固定数量端口。普通模式可接 IMAGE batch 或 ComfyUI 图像列表输出，节点会在一次执行中读取全部图片，生成流畅完整的单画面描述，并删除“图1/图2”等来源标签。`
+`节点统一使用 images、videos、audios 三个批次/列表端口，不再提供“图像1/图像2”这类固定数量端口。普通模式支持零张、单张或多张参考图；没有图片时，只要填写融合描述或连接自备提示词参考也可执行。单图风格生成流畅完整的单画面描述，并删除“图1/图2”等来源标签。`
+
+`选择 Storyboard Images 输出风格时，默认一次生成5个静态分镜（用户可在融合描述中另行指定数量）。每段严格以 Next Scene: 开头，完整重复人物身份、发型、服装和连续性细节，并改变姿态、景别、角度、构图、景深与场景细节；不会输出时间码、运镜、音频或“同上”等跨段引用。`
 
 `MiniMax H3 模式下，images、videos、audios 均为可选输入。三个媒体批次全部为空时自动使用纯文本 T2VA，输出 integrated_multimodal_description、overall_soundscape、non_diegetic_music 三核心；存在媒体时使用 Ref2VA，并通过 videos 和 audios 列表/批次端口支持最多9张参考图、3段参考视频和3段参考音频。视频会抽取代表帧供视觉模型理解，音频批次会按波形批次维拆分并读取时长，再依据融合描述安排用途。Ref2VA 输出使用 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式，可直接连接 MiniMax H3 节点的 prompt 输入。`
 
@@ -416,6 +419,8 @@ ComfyUI/user/default/prompt-assistant/rules/multimedia_reference/
 多媒体参考提示词库.reference_content
     → 多媒体参考融合提示词.reference_prompt_content（自备提示词参考）
 ```
+
+`reference_content` 使用专用依附连接类型，只供多媒体参考融合节点读取。融合节点设为忽略（bypass）时，参考库内容不会被当作普通字符串透传；连接到融合描述输入的用户提示词可继续传给下游文本节点。
 
 自备提示词只作为大模型的高优先级细节参考，不会替换“规则预设”或已启用的“自定义规则”。明确填写的“融合描述”优先级最高；参考文件中的固定人物身份、服装、场景、对白、时长或画幅若与本次要求冲突，不会被机械照搬。普通融合和 MiniMax H3 模式均支持该输入。
 

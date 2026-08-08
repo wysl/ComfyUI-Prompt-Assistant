@@ -233,7 +233,7 @@
     },
     "MultiImageFusionNode": {
         "display_name": "✨Multimedia Reference Fusion Prompt",
-        "description": "Build a single-image prompt from images or a MiniMax H3 Ref2VA prompt from image, video, and audio references",
+        "description": "Build single-image or storyboard-image prompts from images or text, or a MiniMax H3 prompt from multimedia references",
         "inputs": {
             "images": {
                 "name": "Images Batch",
@@ -249,7 +249,7 @@
             },
             "fusion_description": {
                 "name": "Fusion Description",
-                "tooltip": "Optional. Leave empty to auto-compose a single-image prompt from references and the selected rule only"
+                "tooltip": "Optional. Describe a single image, storyboard-image set, or MiniMax H3 video target; standard modes also support text-only generation"
             },
             "rule": {
                 "name": "Rule",
@@ -265,11 +265,11 @@
             },
             "reference_prompt_content": {
                 "name": "Custom Prompt Reference",
-                "tooltip": "Connect reference content from the multimedia prompt library; it supplements the current rule without replacing it"
+                "tooltip": "Dependency-only content from the multimedia prompt library; it supplements the rule and is never passed downstream when the fusion node is bypassed"
             },
             "output_style": {
                 "name": "Output Style",
-                "tooltip": "Standard fusion styles; MiniMax H3 uses T2V without media and Ref2VA when media is supplied"
+                "tooltip": "Storyboard Images emits five independent Next Scene: blocks by default; MiniMax H3 uses T2V without media and Ref2VA with media"
             },
             "video_frames_per_ref": {
                 "name": "Frames Per Video",
@@ -291,7 +291,7 @@
         "outputs": {
             "0": {
                 "name": "Fusion Prompt",
-                "tooltip": "Single-image composition prompt"
+                "tooltip": "Generated single-image, storyboard-image, or MiniMax H3 prompt"
             },
             "1": {
                 "name": "Reference Manifest",

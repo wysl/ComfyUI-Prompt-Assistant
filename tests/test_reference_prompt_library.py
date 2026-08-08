@@ -30,6 +30,7 @@ def load_prompt_builder_class():
         "_format_user_intent_block",
         "_build_prompt",
         "_build_h3_prompt",
+        "_sanitize_fusion_prompt",
     }
     methods = [
         node
@@ -48,7 +49,9 @@ def load_prompt_builder_class():
     namespace = {
         "H3_REF2VA_RULE": "BASE H3 RULE",
         "H3_T2V_RULE": "BASE H3 T2V RULE",
+        "STORYBOARD_OUTPUT_STYLE": "Storyboard Images",
         "List": list,
+        "re": __import__("re"),
     }
     exec(compile(module, str(source_path), "exec"), namespace)
     return namespace["PromptBuilder"]
@@ -160,6 +163,72 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("USER T2V INTENT", prompt)
         self.assertIn("SELECTED DETAIL", prompt)
         self.assertNotIn("BASE H3 RULE", prompt)
+
+    def test_storyboard_prompt_uses_independent_next_scene_contract(self):
+        prompt = self.builder._build_prompt(
+            rule_content="BASE SINGLE IMAGE RULE",
+            fusion_description="Create a spring portrait sequence",
+            image_count=0,
+            output_style="Storyboard Images",
+            reference_prompt_content="Keep the same hairstyle and white outfit",
+        )
+        self.assertIn("Next Scene:", prompt)
+        self.assertIn("除非用户明确指定数量，否则输出5个分镜", prompt)
+        self.assertIn("每个分镜都是一条完整、自包含", prompt)
+        self.assertIn("完整重述主体身份", prompt)
+        self.assertIn("优先于上方规则中任何‘单张图’", prompt)
+        self.assertNotIn("最终正文必须是流畅完整的单画面描述", prompt)
+
+    def test_standard_prompt_supports_zero_image_text_input(self):
+        prompt = self.builder._build_prompt(
+            rule_content="BASE RULE",
+            fusion_description="TEXT ONLY STORY",
+            image_count=0,
+            output_style="Natural Language",
+        )
+        self.assertIn("共 0 张", prompt)
+        self.assertIn("TEXT ONLY STORY", prompt)
+
+    def test_sanitizer_preserves_storyboard_line_breaks(self):
+        result = self.builder._sanitize_fusion_prompt(
+            "Next Scene: first  scene\n\nNext Scene: second  scene"
+        )
+        self.assertEqual(
+            result,
+            "Next Scene: first scene\n\nNext Scene: second scene",
+        )
+
+
+class ReferencePromptNodeContractTests(unittest.TestCase):
+    def test_reference_content_uses_dependency_only_connection_type(self):
+        library_source = (
+            PROJECT_ROOT / "node" / "reference_prompt_library_node.py"
+        ).read_text(encoding="utf-8")
+        fusion_source = (
+            PROJECT_ROOT / "node" / "multi_image_fusion_node.py"
+        ).read_text(encoding="utf-8")
+        io_types_source = (PROJECT_ROOT / "node" / "io_types.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            'io.Custom("PROMPT_ASSISTANT_REFERENCE_PROMPT")', io_types_source
+        )
+        self.assertIn(
+            'ReferencePromptContent.Output("reference_content")', library_source
+        )
+        self.assertIn("ReferencePromptContent.Input(", fusion_source)
+        self.assertIn('"reference_prompt_content"', fusion_source)
+        self.assertNotIn('io.String.Output("reference_content")', library_source)
+
+    def test_storyboard_style_allows_text_only_and_uses_larger_output_budget(self):
+        fusion_source = (
+            PROJECT_ROOT / "node" / "multi_image_fusion_node.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('STORYBOARD_OUTPUT_STYLE = "Storyboard Images"', fusion_source)
+        self.assertNotIn("Multi-image fusion needs at least 2 images.", fusion_source)
+        self.assertIn("5000 if is_storyboard", fusion_source)
+        self.assertIn("images_data = []", fusion_source)
 
 
 if __name__ == "__main__":

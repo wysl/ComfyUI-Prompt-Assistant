@@ -2,9 +2,9 @@
 多媒体参考融合提示词节点 - V3
 
 不是像素级融图，而是：
-- 输入多张参考图，或 MiniMax H3 所需的图片/视频/音频参考
-- 输入用户希望“整合到一张画面里”的描述
-- 调用 VLM 一次看多图，输出可直接用于生图的融合提示词
+- 输入零张、单张或多张参考图，或 MiniMax H3 所需的图片/视频/音频参考
+- 输入用户的单图、多分镜图片或目标视频描述
+- 调用 VLM 输出可直接用于生图或 MiniMax H3 的提示词
 """
 
 from __future__ import annotations
@@ -43,6 +43,7 @@ from ..utils.multimedia_reference import (
     validate_h3_references,
 )
 from .base import VLMNodeBase
+from .io_types import ReferencePromptContent
 
 
 DEFAULT_FUSION_RULE = """Role
@@ -87,8 +88,11 @@ overall_soundscape, then non_diegetic_music. Do not emit any Picture, Video,
 Audio, Subject, summary, retention_analysis, or detailed_description field."""
 
 
+STORYBOARD_OUTPUT_STYLE = "Storyboard Images"
+
+
 class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
-    """图片融合或 MiniMax H3 多媒体参考提示词节点。"""
+    """单图、多分镜图片或 MiniMax H3 多媒体参考提示词节点。"""
 
     @classmethod
     def define_schema(cls):
@@ -125,8 +129,8 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             display_name="✨Multimedia Reference Fusion Prompt",
             category="✨Prompt Assistant",
             description=(
-                "Generate a composition prompt from reference images, or a "
-                "MiniMax H3 Ref2VA prompt from image/video/audio references"
+                "Generate single-image or storyboard-image prompts from images or text, "
+                "or a MiniMax H3 prompt from image/video/audio references"
             ),
             inputs=[
                 io.Image.Input(
@@ -148,7 +152,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "fusion_description",
                     multiline=True,
                     default="",
-                    placeholder="Describe the target image or MiniMax H3 target video",
+                    placeholder="Describe the target image, storyboard set, or MiniMax H3 video",
                     tooltip=(
                         "Describe how to use the references. In H3 mode, include any required "
                         "audio role, dialogue, editing, continuation, or preservation intent."
@@ -173,15 +177,13 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     default="",
                     tooltip="Custom rule content, only used when Custom Rule is enabled",
                 ),
-                io.String.Input(
+                ReferencePromptContent.Input(
                     "reference_prompt_content",
                     optional=True,
-                    multiline=True,
-                    default="",
-                    force_input=True,
                     tooltip=(
                         "Connect the Multimedia Reference Prompt Library output. "
-                        "This supplements the selected rule and never replaces it."
+                        "This dependency supplements the selected rule and is never "
+                        "used as the fusion node's bypass output."
                     ),
                 ),
                 io.Combo.Input(
@@ -191,12 +193,14 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                         "Natural Language",
                         "Tags",
                         "Edit Instruction",
+                        STORYBOARD_OUTPUT_STYLE,
                         H3_OUTPUT_STYLE,
                     ],
                     default="Auto",
                     tooltip=(
-                        "Preferred output style. MiniMax H3 Ref2VA preserves "
-                        "Picture/Video/Audio reference labels and emits six sections."
+                        "Preferred output style. Storyboard Images emits independent "
+                        "Next Scene blocks. MiniMax H3 Ref2VA preserves Picture/Video/Audio "
+                        "reference labels and emits six sections."
                     ),
                 ),
                 io.Int.Input(
@@ -381,6 +385,10 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             "Natural Language": "输出自然语言长描述，适合 Flux / 通用文生图。",
             "Tags": "输出逗号分隔的标签流，可带适度权重，适合 SD/SDXL。注意标签中也不得出现图1/图2等来源词。",
             "Edit Instruction": "输出可执行的图像编辑/合成指令，适合 Kontext / Qwen-Image-Edit 等编辑模型。指令中描述最终画面本身，不要写 Image 1/图1 这类来源标签。",
+            STORYBOARD_OUTPUT_STYLE: (
+                "输出一组可一次性提交给多图生图模型的独立静态分镜提示词。"
+                "除非用户明确指定数量，否则输出5个分镜。"
+            ),
         }.get(style, "根据用户描述与参考图自动选择最适合的提示词风格。")
 
         # 仅供模型理解输入顺序；明确禁止写进最终输出
@@ -390,6 +398,34 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 for i in range(1, image_count + 1)
             ]
         )
+
+        if style == STORYBOARD_OUTPUT_STYLE:
+            intent = (fusion_description or "").strip() or (
+                "（空）请根据参考图和所选参考资料设计一组连贯但画面各不相同的静态分镜。"
+            )
+            return (
+                f"{rule_content.strip()}\n\n"
+                "[模式覆盖：多分镜图片]\n"
+                "本节规则优先于上方规则中任何‘单张图’‘单一画面’或‘只输出一段’要求。\n"
+                "任务是生成多张彼此独立、可分别生图的静态分镜提示词，而不是视频脚本。\n\n"
+                f"[输入参考图说明]\n共 {image_count} 张，按顺序提供。\n{ref_lines}\n\n"
+                f"[输出风格偏好]\n{style_hint}\n\n"
+                "[用户的分镜要求]\n"
+                f"{intent}\n\n"
+                f"{cls._format_reference_prompt_block(reference_prompt_content)}"
+                "[强制输出格式]\n"
+                "- 每个分镜必须恰好以 `Next Scene:` 开头，分镜之间空一行。\n"
+                "- 不要添加标题、序号、项目符号、代码围栏或开场/结尾说明。\n"
+                "- 每个分镜都是一条完整、自包含、可单独用于静态生图的提示词。\n"
+                "- 每个分镜都要完整重述主体身份、年龄特征、发型、服装、饰品及关键连续性细节；"
+                "禁止使用‘同上’‘保持上述衣着’‘相同人物’等依赖其他段落的省略说法。\n"
+                "- 在维持人物和视觉连续性的同时，分镜之间应明显改变姿态或动作、景别、拍摄角度、"
+                "构图、景深以及合理的场景细节，避免只替换少量词语。\n"
+                "- 只写静态画面中可见的瞬间，不写时间码、镜头编号、视频分镜、镜头运动、转场、"
+                "对白、音效或音乐。\n"
+                "- 严禁出现‘图1/图2/Image 1/Image 2/参考图1’等素材来源标签。\n"
+                "- 输出语言跟随用户输入；用户没有提供文字时默认使用中文。"
+            )
 
         return (
             f"{rule_content.strip()}\n\n"
@@ -514,9 +550,12 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         for patt in patterns:
             text = re.sub(patt, "", text, flags=re.IGNORECASE)
 
-        text = re.sub(r"\s{2,}", " ", text)
-        text = re.sub(r"\s+([，。！？、,.;:!?])", r"\1", text)
+        text = re.sub(r"[^\S\r\n]{2,}", " ", text)
+        text = re.sub(r"[^\S\r\n]+([，。！？、,.;:!?])", r"\1", text)
         text = re.sub(r"([，、]){2,}", r"\1", text)
+        text = re.sub(r"[ \t]+\r?\n", "\n", text)
+        text = re.sub(r"\r?\n[ \t]+", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip(" ，,")
 
     @classmethod
@@ -555,6 +594,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             videos = collect_video_references(videos)
             audios = collect_audio_references(audios)
             is_h3 = output_style == H3_OUTPUT_STYLE
+            is_storyboard = output_style == STORYBOARD_OUTPUT_STYLE
             is_text_to_video = is_h3 and not image_frames and not videos and not audios
 
             if is_h3:
@@ -572,8 +612,15 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     raise ValueError(
                         f"Video/audio references require output style '{H3_OUTPUT_STYLE}'."
                     )
-                if len(image_frames) < 2:
-                    raise ValueError("Multi-image fusion needs at least 2 images.")
+                if (
+                    not image_frames
+                    and not fusion_description
+                    and not reference_prompt_content.strip()
+                ):
+                    raise ValueError(
+                        "Standard output styles need at least one image, a fusion description, "
+                        "or connected reference prompt content."
+                    )
                 rule_content, rule_name = cls._resolve_rule_content(
                     rule,
                     custom_rule,
@@ -610,7 +657,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 "temperature": target_model.get("temperature", 0.7),
                 "max_tokens": max(
                     int(target_model.get("max_tokens", 1000) or 1000),
-                    2600 if is_h3 else 1200,
+                    5000 if is_storyboard else (2600 if is_h3 else 1200),
                 ),
                 "top_p": target_model.get("top_p", 0.9),
             }
@@ -659,11 +706,15 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                         len(image_frames), videos, audios, payload_labels, fusion_description
                     )
             else:
-                batch = normalize_frames(image_frames)
-                max_images = max(2, min(model_image_limit, 8))
-                images_data, preview_tensor = cls._tensor_to_data_urls(
-                    batch, max_images=max_images
-                )
+                if image_frames:
+                    batch = normalize_frames(image_frames)
+                    max_images = max(1, min(model_image_limit, 8))
+                    images_data, preview_tensor = cls._tensor_to_data_urls(
+                        batch, max_images=max_images
+                    )
+                else:
+                    images_data = []
+                    preview_tensor = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
                 prompt_to_send = cls._build_prompt(
                     rule_content=rule_content,
                     fusion_description=fusion_description,
