@@ -27,6 +27,7 @@ def load_prompt_builder_class():
     )
     method_names = {
         "_format_reference_prompt_block",
+        "_format_image_role_directives",
         "_format_user_intent_block",
         "_build_prompt",
         "_build_h3_prompt",
@@ -182,6 +183,27 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("与正文之间绝对禁止换行", prompt)
         self.assertNotIn("最终正文必须是流畅完整的单画面描述", prompt)
 
+    def test_storyboard_prompt_promotes_cross_image_element_assignments(self):
+        prompt = self.builder._build_prompt(
+            rule_content="BASE RULE",
+            fusion_description=(
+                "生成3张分镜\n"
+                "人物描写: 识别图1中的人物描写和装扮\n"
+                "环境: 识别图2中的环境描写\n"
+                "景别: 随机"
+            ),
+            image_count=2,
+            output_style="Storyboard Images",
+        )
+        self.assertIn("用户指定的参考图元素分工 - 最高优先级", prompt)
+        self.assertIn("人物描写: 识别图1中的人物描写和装扮", prompt)
+        self.assertIn("环境: 识别图2中的环境描写", prompt)
+        self.assertNotIn("- 生成3张分镜\n", prompt)
+        self.assertIn("禁止按输入图片轮流复刻整张图", prompt)
+        self.assertIn("必须排除图1环境以及图2人物和装扮", prompt)
+        self.assertIn("动作默认只改变姿态与肢体关系", prompt)
+        self.assertIn("‘随机’只允许改变用户标为随机的维度", prompt)
+
     def test_standard_prompt_supports_zero_image_text_input(self):
         prompt = self.builder._build_prompt(
             rule_content="BASE RULE",
@@ -246,6 +268,19 @@ class ReferencePromptNodeContractTests(unittest.TestCase):
         self.assertNotIn("Multi-image fusion needs at least 2 images.", fusion_source)
         self.assertIn("5000 if is_storyboard", fusion_source)
         self.assertIn("images_data = []", fusion_source)
+
+    def test_vision_payload_does_not_force_one_scene_or_one_output_per_image(self):
+        service_source = (PROJECT_ROOT / "services" / "vlm.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "Do not assume that each reference image maps to a separate output",
+            service_source,
+        )
+        self.assertNotIn(
+            "Use these labels when combining them into one final scene/prompt",
+            service_source,
+        )
 
 
 if __name__ == "__main__":

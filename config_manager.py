@@ -1,4 +1,5 @@
 import os
+import copy
 import json
 import csv
 import tempfile
@@ -61,7 +62,9 @@ class ConfigManager:
         self.default_active_prompts = {
             "expand": "expand_扩写-通用",
             "vision_zh": "vision_zh_图像描述-Tag风格",
-            "vision_en": "vision_en_Detail_Caption"
+            "vision_en": "vision_en_Detail_Caption",
+            "video": "video_视频复刻与重构",
+            "fusion": "fusion_多图融合-统一构图",
         }
         self.default_user_tags = {"favorites": []}
         
@@ -73,6 +76,9 @@ class ConfigManager:
         # 执行数据迁移和配置文件初始化
         # migration_tool 统一处理：确保文件存在 -> CSV标签迁移 -> 旧版迁移 -> 增量更新
         self._run_migrations()
+
+        # Repair schema-level omissions even when the saved config version is current.
+        self._ensure_required_prompt_structure()
 
         # 验证并修复激活提示词（静默模式，仅异常时修复）
         self.validate_and_fix_active_prompts()
@@ -113,6 +119,43 @@ class ConfigManager:
         except Exception as e:
             self._log(f"数据迁移失败: {str(e)}")
             # 迁移失败不影响正常运行，仅记录日志
+
+    def _ensure_required_prompt_structure(self):
+        """Restore missing rule groups without overwriting user-managed rules."""
+        prompt_groups = (
+            "expand_prompts",
+            "translate_prompts",
+            "vision_prompts",
+            "video_prompts",
+            "fusion_prompts",
+        )
+        system_prompts = self.load_system_prompts()
+        if not isinstance(system_prompts, dict):
+            system_prompts = {}
+
+        prompts_modified = False
+        for group in prompt_groups:
+            if not isinstance(system_prompts.get(group), dict):
+                default_group = self.default_system_prompts.get(group, {})
+                system_prompts[group] = copy.deepcopy(default_group)
+                prompts_modified = True
+
+        if prompts_modified:
+            self.save_system_prompts(system_prompts)
+            self._log("已补全缺失的规则管理器分组")
+
+        active_prompts = self.load_active_prompts()
+        if not isinstance(active_prompts, dict):
+            active_prompts = {}
+
+        active_modified = False
+        for prompt_type, default_id in self.default_active_prompts.items():
+            if prompt_type not in active_prompts:
+                active_prompts[prompt_type] = default_id
+                active_modified = True
+
+        if active_modified:
+            self.save_active_prompts(active_prompts)
 
     # --- 统一日志输出 ---
     def _log(self, msg: str):

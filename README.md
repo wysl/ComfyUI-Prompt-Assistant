@@ -28,6 +28,7 @@
 <summary><strong>[2026-08-07] 🔥当前开发版</strong></summary>
 
 **Changes:**
+* **规则管理器分组修复**：修复多媒体参考规则错误依赖视频规则、残缺用户配置不自动补全以及窄窗口标签不可见的问题；插件版本更新至 `2.1.4`。
 * **多分镜图片输出**：多媒体参考融合提示词节点新增 `Storyboard Images` 风格，默认一次生成5段以 `Next Scene:` 开头、人物连续且可独立生图的静态分镜提示词。
 * **MiniMax H3 T2V / Ref2VA**：多媒体参考融合提示词节点统一使用可选的 `images`、`videos`、`audios` 批次/列表端口；三个媒体输入全空时生成纯文本 T2V 提示词，存在媒体时生成 Ref2VA 六段式提示词。
 * **MiniMax H3 最终规则**：内置 `minimax h3` 预设更新为最终优化版，加入人脸景别、跨镜动作连续性和运动方向锁定约束；节点执行与规则管理共用同一规则源。
@@ -394,6 +395,8 @@
 
 `选择 Storyboard Images 输出风格时，默认一次生成5个静态分镜（用户可在融合描述中另行指定数量）。每段严格使用 Next Scene: 正文 的单行格式，节点会自动消除前缀与正文之间的换行，避免下游按行拆分时把 Next Scene: 当成独立提示词。每段完整重复人物身份、发型、服装和连续性细节，并改变姿态、景别、角度、构图、景深与场景细节；不会输出时间码、运镜、音频或“同上”等跨段引用。`
 
+`多图输入可在融合描述中指定元素来源，例如“人物与装扮取自图1，环境取自图2”。Storyboard Images 会把这类图 N 指令提升为最高优先级元素绑定：只提取对应图片中被点名的类别，丢弃未指定类别，并将重组后的人物、服装与环境统一应用到所有分镜，而不是让一张参考图对应一个输出分镜。`
+
 `MiniMax H3 模式下，images、videos、audios 均为可选输入。三个媒体批次全部为空时自动使用纯文本 T2VA，输出 integrated_multimodal_description、overall_soundscape、non_diegetic_music 三核心；存在媒体时使用 Ref2VA，并通过 videos 和 audios 列表/批次端口支持最多9张参考图、3段参考视频和3段参考音频。视频会抽取代表帧供视觉模型理解，音频批次会按波形批次维拆分并读取时长，再依据融合描述安排用途。Ref2VA 输出使用 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式，可直接连接 MiniMax H3 节点的 prompt 输入。`
 
 #### **🔹多媒体参考提示词库节点**
@@ -453,14 +456,14 @@ ComfyUI/user/default/prompt-assistant/rules/multimedia_reference/
 
 2. 克隆这个代码仓库:
    ```bash
-   git clone https://github.com/yawiii/ComfyUI-Prompt-Assistant.git
+   git clone https://github.com/wysl/ComfyUI-Prompt-Assistant.git
    ```
 
 3. 重启 ComfyUI：
 
 #### **下载插件压缩包**
 
-1.  从[克隆仓库](https://github.com/yawiii/comfyui_prompt_assistant/releases)中下载最新版本
+1.  从[维护仓库](https://github.com/wysl/ComfyUI-Prompt-Assistant/releases)中下载最新版本
 
     解压缩到 `ComfyUI/custom_nodes` 目录下
 

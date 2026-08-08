@@ -371,6 +371,38 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         )
 
     @classmethod
+    def _format_image_role_directives(
+        cls,
+        fusion_description: str,
+        image_count: int,
+    ) -> str:
+        """Promote explicit Image N element assignments from the user intent."""
+        if image_count <= 0 or not fusion_description:
+            return ""
+
+        label_pattern = re.compile(
+            r"(?:参考图|输入图|图像|图片|图|Image)\s*[1-9]\d*",
+            flags=re.IGNORECASE,
+        )
+        directives = []
+        for raw_line in fusion_description.splitlines():
+            line = raw_line.strip()
+            if line and label_pattern.search(line):
+                directives.append(line)
+
+        if not directives:
+            return ""
+
+        quoted = "\n".join(f"- {line}" for line in directives)
+        return (
+            "[用户指定的参考图元素分工 - 最高优先级]\n"
+            "图片编号严格对应输入列表顺序。以下是用户原文指定的选择性提取关系：\n"
+            f"{quoted}\n"
+            "这些指令表示只从对应图片提取被点名的元素，不表示复刻该图片的全部内容。"
+            "未被点名的主体、服装、动作、道具、环境、构图与光影不得从该图片自动带入。\n\n"
+        )
+
+    @classmethod
     def _build_prompt(
         cls,
         rule_content: str,
@@ -394,9 +426,14 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         # 仅供模型理解输入顺序；明确禁止写进最终输出
         ref_lines = "\n".join(
             [
-                f"- 输入参考图{i}：仅供理解素材，禁止在最终提示词中写‘图{i}’或‘Image {i}’"
+                f"- 输入参考图{i}：对应用户所说的图{i}/Image {i}；"
+                "仅供选择性提取素材，禁止在最终提示词中保留来源标签"
                 for i in range(1, image_count + 1)
             ]
+        )
+        image_role_block = cls._format_image_role_directives(
+            fusion_description,
+            image_count,
         )
 
         if style == STORYBOARD_OUTPUT_STYLE:
@@ -410,9 +447,21 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 "任务是生成多张彼此独立、可分别生图的静态分镜提示词，而不是视频脚本。\n\n"
                 f"[输入参考图说明]\n共 {image_count} 张，按顺序提供。\n{ref_lines}\n\n"
                 f"[输出风格偏好]\n{style_hint}\n\n"
+                f"{image_role_block}"
                 "[用户的分镜要求]\n"
                 f"{intent}\n\n"
                 f"{cls._format_reference_prompt_block(reference_prompt_content)}"
+                "[多图元素选取与跨图重组 - 强制执行]\n"
+                "- 参考图是元素素材库，不是一张参考图对应一个输出分镜。禁止按输入图片轮流复刻整张图。\n"
+                "- 用户为某张图指定人物、脸部、发型、服装、动作、道具、环境、构图或光影时，"
+                "只提取被指定的类别，并丢弃该图中未被指定的其他类别。\n"
+                "- 先在内部建立一份全局连续性设定：把不同参考图中被点名的元素重组成同一个最终主体与环境；"
+                "然后把这套重组结果应用到每一个分镜。不要输出这份分析或素材清单。\n"
+                "- 例如用户要求提取图1的人物与装扮、图2的环境，则每个分镜都必须是图1人物及装扮处于"
+                "图2环境中；必须排除图1环境以及图2人物和装扮。\n"
+                "- 参考提示词库中的动作默认只改变姿态与肢体关系，不得替换已锁定的人物、服装或环境，"
+                "除非用户明确要求替换。\n"
+                "- ‘随机’只允许改变用户标为随机的维度，不得破坏人物、服装、环境等已锁定连续性。\n\n"
                 "[强制输出格式]\n"
                 "- 每个分镜必须使用单独一条物理行，格式严格为 `Next Scene: 正文`。"
                 "冒号后紧跟一个空格和正文，`Next Scene:` 与正文之间绝对禁止换行。\n"
@@ -435,6 +484,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             f"{rule_content.strip()}\n\n"
             f"[输入参考图说明]\n共 {image_count} 张，按顺序提供。\n{ref_lines}\n\n"
             f"[输出风格偏好]\n{style_hint}\n\n"
+            f"{image_role_block}"
             f"{cls._format_user_intent_block(fusion_description)}\n\n"
             f"{cls._format_reference_prompt_block(reference_prompt_content)}"
             "请综合以上参考图与用户意图，输出最终融合提示词。\n"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 
@@ -81,6 +82,45 @@ class ConfigManagerTests(unittest.TestCase):
         self.assertIn("MiniMax-H3 视频提示词优化规则（最终版）", preset["content"])
         self.assertIn("禁止在切换运镜/剪切之后复读", preset["content"])
         self.assertIn("全片锁定主体运动方向与朝向", preset["content"])
+
+    def test_missing_fusion_group_is_restored_without_overwriting_other_rules(self):
+        manager = object.__new__(self.config_manager_class)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager.system_prompts_path = str(root / "system_prompts.json")
+            manager.active_prompts_path = str(root / "active_prompts.json")
+            manager.default_system_prompts = {
+                "expand_prompts": {"custom": {"content": "default"}},
+                "translate_prompts": {},
+                "vision_prompts": {},
+                "video_prompts": {},
+                "fusion_prompts": {
+                    "fusion_default": {"content": "fusion rule"}
+                },
+            }
+            manager.default_active_prompts = {
+                "expand": "custom",
+                "fusion": "fusion_default",
+            }
+            manager._log = lambda message: None
+            manager.save_system_prompts(
+                {"expand_prompts": {"custom": {"content": "user content"}}}
+            )
+            manager.save_active_prompts({"expand": "custom"})
+
+            manager._ensure_required_prompt_structure()
+
+            prompts = manager.load_system_prompts()
+            active = manager.load_active_prompts()
+            self.assertEqual(
+                prompts["expand_prompts"]["custom"]["content"],
+                "user content",
+            )
+            self.assertEqual(
+                prompts["fusion_prompts"]["fusion_default"]["content"],
+                "fusion rule",
+            )
+            self.assertEqual(active["fusion"], "fusion_default")
 
 
 if __name__ == "__main__":

@@ -589,7 +589,8 @@ class VisionService(OpenAICompatibleService):
                     "type": "text",
                     "text": (
                         f"There are {len(processed_images)} reference images below, ordered as Image 1..Image {len(processed_images)}. "
-                        "Use these labels when combining them into one final scene/prompt."
+                        "Use these labels only to follow the system prompt's element-selection and role assignments. "
+                        "Do not assume that each reference image maps to a separate output, or that the task requires one final scene."
                     )
                 }]
                 for idx, img in enumerate(processed_images, 1):

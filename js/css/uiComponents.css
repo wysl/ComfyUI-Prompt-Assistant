@@ -3242,6 +3242,9 @@ body.column-resizing * {
     padding-bottom: 0;
     margin-bottom: 0;
     flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+    overflow-x: visible;
 }
 
 /* ---添加按钮容器--- */

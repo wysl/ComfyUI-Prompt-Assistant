@@ -237,7 +237,7 @@
         "inputs": {
             "images": {
                 "name": "图像批次",
-                "tooltip": "可选。IMAGE 批次或 ComfyUI IMAGE 列表；H3 模式下三个媒体批次全空时自动使用 T2V"
+                "tooltip": "可选。IMAGE 批次或 ComfyUI IMAGE 列表，按列表顺序对应图1、图2；可在融合描述中分别指定每张图提供的人物、服装、环境等元素"
             },
             "videos": {
                 "name": "视频批次",

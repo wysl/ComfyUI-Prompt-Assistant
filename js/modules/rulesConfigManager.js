@@ -702,6 +702,7 @@ class RulesConfigManager {
                 } else {
                     this.activeVideoPromptId = activeVideoId;
                 }
+            }
 
             // 转换多图融合规则数据
             this.fusionPrompts = [];
@@ -729,7 +730,6 @@ class RulesConfigManager {
                 } else {
                     this.activeFusionPromptId = activeFusionId;
                 }
-            }
             }
 
             // 备份初始状态

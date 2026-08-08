@@ -237,7 +237,7 @@
         "inputs": {
             "images": {
                 "name": "Images Batch",
-                "tooltip": "Optional IMAGE batch or list; H3 automatically uses T2V when all three media inputs are empty"
+                "tooltip": "Optional IMAGE batch or list, mapped in order to Image 1, Image 2, and so on; the fusion description can assign subject, outfit, environment, or other element roles per image"
             },
             "videos": {
                 "name": "Videos Batch",
