@@ -44,6 +44,14 @@ class H3ContextInputs:
     keyframe_roles: Tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class H3ResolvedMediaInputs:
+    images: Tuple[Any, ...]
+    videos: Tuple[Any, ...]
+    audios: Tuple[Any, ...]
+    analysis_images: Tuple[Any, ...]
+
+
 def unwrap_scalar(value: Any, default: Any = None) -> Any:
     """Unwrap scalar widgets when a V3 node uses ``is_input_list=True``."""
     if isinstance(value, (list, tuple)):
@@ -112,6 +120,37 @@ def iter_input_values(value: Any) -> Iterable[Any]:
             yield from iter_input_values(item)
     elif value is not None:
         yield value
+
+
+def resolve_h3_media_inputs(
+    context_inputs: Optional[H3ContextInputs],
+    images: Any = None,
+    videos: Any = None,
+    audios: Any = None,
+) -> H3ResolvedMediaInputs:
+    """Separate H3 generation media from optional VLM-only analysis images."""
+    input_images = tuple(iter_input_values(images))
+    input_videos = tuple(iter_input_values(videos))
+    input_audios = tuple(iter_input_values(audios))
+    if context_inputs is None:
+        return H3ResolvedMediaInputs(
+            images=input_images,
+            videos=input_videos,
+            audios=input_audios,
+            analysis_images=(),
+        )
+    if input_videos or input_audios:
+        raise ValueError(
+            "When H3 Context is connected, separate video and audio inputs are not "
+            "supported. Connect them to MiniMax H3 Easy so the context can preserve "
+            "their H3 reference order."
+        )
+    return H3ResolvedMediaInputs(
+        images=context_inputs.images,
+        videos=context_inputs.videos,
+        audios=context_inputs.audios,
+        analysis_images=input_images,
+    )
 
 
 def _tensor_frames(value: Any) -> List[torch.Tensor]:

@@ -212,6 +212,30 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("integrated_multimodal_description:", prompt)
         self.assertIn("Do not decorate the field headers with Markdown", prompt)
 
+    def test_h3_analysis_images_do_not_change_t2va_output_contract(self):
+        prompt = self.builder._build_h3_prompt(
+            rule_content="SELECTED H3 RULE",
+            output_style_rule="OFFICIAL H3 OUTPUT STYLE",
+            fusion_description="Extract the person from image 1",
+            image_count=0,
+            video_count=0,
+            audio_count=0,
+            payload_labels=[
+                "VLM Image 1 => analysis-only Image 1 (user-facing Image 1 / 图1)"
+            ],
+            analysis_payload_labels=[
+                "VLM Image 1 => analysis-only Image 1 (user-facing Image 1 / 图1)"
+            ],
+            base_mode=True,
+            h3_mode="T2VA",
+        )
+
+        self.assertIn("Analysis-only visual references", prompt)
+        self.assertIn("must not change the H3 generation mode", prompt)
+        self.assertIn("not H3 keyframes or Ref2VA media", prompt)
+        self.assertIn("integrated_multimodal_description:", prompt)
+        self.assertNotIn("subject_definitions:\n", prompt)
+
     def test_h3_mode_resolution_distinguishes_base_keyframe_roles(self):
         self.assertEqual(self.builder._resolve_h3_mode_name(0, True, ()), "T2VA")
         self.assertEqual(

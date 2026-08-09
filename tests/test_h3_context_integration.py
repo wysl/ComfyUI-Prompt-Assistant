@@ -105,6 +105,64 @@ class H3ContextIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Update ComfyUI-MiniMaxH3-Easy"):
             multimedia_reference.extract_h3_context_inputs(object())
 
+    def test_context_keeps_external_images_as_analysis_only_inputs(self):
+        context_image = object()
+        analysis_image = object()
+        context = multimedia_reference.H3ContextInputs(
+            mode="image",
+            prompt="original prompt",
+            images=(context_image,),
+            videos=(),
+            audios=(),
+            synchronized_audio_count=0,
+            synchronized_audio_video_indices=(),
+            keyframe_roles=("first",),
+        )
+
+        result = multimedia_reference.resolve_h3_media_inputs(
+            context, images=[analysis_image]
+        )
+
+        self.assertEqual(result.images, (context_image,))
+        self.assertEqual(result.analysis_images, (analysis_image,))
+
+    def test_empty_context_media_does_not_promote_analysis_image_to_keyframe(self):
+        analysis_image = object()
+        context = multimedia_reference.H3ContextInputs(
+            mode="image",
+            prompt="text-to-video prompt",
+            images=(),
+            videos=(),
+            audios=(),
+            synchronized_audio_count=0,
+            synchronized_audio_video_indices=(),
+            keyframe_roles=(),
+        )
+
+        result = multimedia_reference.resolve_h3_media_inputs(
+            context, images=[analysis_image]
+        )
+
+        self.assertEqual(result.images, ())
+        self.assertEqual(result.analysis_images, (analysis_image,))
+
+    def test_context_rejects_external_video_and_audio_inputs(self):
+        context = multimedia_reference.H3ContextInputs(
+            mode="image",
+            prompt="prompt",
+            images=(),
+            videos=(),
+            audios=(),
+            synchronized_audio_count=0,
+            synchronized_audio_video_indices=(),
+            keyframe_roles=(),
+        )
+
+        with self.assertRaisesRegex(ValueError, "video and audio"):
+            multimedia_reference.resolve_h3_media_inputs(
+                context, videos=[object()]
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

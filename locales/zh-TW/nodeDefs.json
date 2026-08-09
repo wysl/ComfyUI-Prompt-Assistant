@@ -237,7 +237,7 @@
         "inputs": {
             "images": {
                 "name": "圖像批次",
-                "tooltip": "可選。IMAGE 批次或 ComfyUI IMAGE 列表；H3 模式下三個媒體批次全空時自動使用 T2V"
+                "tooltip": "可選。IMAGE 批次或 ComfyUI IMAGE 列表；連接 H3 Context 時僅作為視覺分析素材，不會成為首幀、末幀或 Ref2VA 媒體，也不會改變 H3 模式"
             },
             "videos": {
                 "name": "影片批次",
@@ -249,7 +249,7 @@
             },
             "h3_context": {
                 "name": "H3 Context",
-                "tooltip": "連接 MiniMax H3 Easy 的 H3 Context，自動讀取原提示詞、生成模式與有序媒體輸入"
+                "tooltip": "連接 MiniMax H3 Easy 的 H3 Context，自動讀取原提示詞、生成模式與有序 H3 媒體；單獨連接的圖像批次仍僅用於元素分析"
             },
             "fusion_description": {
                 "name": "融合描述",

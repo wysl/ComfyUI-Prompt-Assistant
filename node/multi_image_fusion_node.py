@@ -37,9 +37,9 @@ from ..utils.multimedia_reference import (
     collect_image_frames,
     collect_video_references,
     extract_h3_context_inputs,
-    iter_input_values,
     normalize_frames,
     reference_hash,
+    resolve_h3_media_inputs,
     sanitize_h3_prompt,
     unwrap_scalar,
     validate_h3_references,
@@ -147,7 +147,10 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 io.Image.Input(
                     "images",
                     optional=True,
-                    tooltip="IMAGE batch or ComfyUI IMAGE list. References follow batch/list order.",
+                    tooltip=(
+                        "IMAGE batch or ComfyUI IMAGE list. With H3 Context connected, "
+                        "these are analysis-only visual references and do not change the H3 mode."
+                    ),
                 ),
                 io.Video.Input(
                     "videos",
@@ -164,7 +167,8 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     optional=True,
                     tooltip=(
                         "Connect MiniMax H3 Easy's H3 Context output to reuse its original "
-                        "prompt, mode, and ordered media inputs automatically."
+                        "prompt, mode, and ordered H3 media inputs automatically. Separate "
+                        "images remain analysis-only references."
                     ),
                 ),
                 io.String.Input(
@@ -280,11 +284,17 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         seed=None,
     ):
         context_inputs = extract_h3_context_inputs(h3_context)
+        resolved_media = resolve_h3_media_inputs(
+            context_inputs,
+            images=images,
+            videos=videos,
+            audios=audios,
+        )
+        images = resolved_media.images
+        videos = resolved_media.videos
+        audios = resolved_media.audios
         fusion_description = unwrap_scalar(fusion_description, "") or ""
         if context_inputs is not None:
-            images = context_inputs.images
-            videos = context_inputs.videos
-            audios = context_inputs.audios
             if not fusion_description.strip():
                 fusion_description = context_inputs.prompt
         rule = unwrap_scalar(rule, "")
@@ -309,6 +319,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             images,
             videos,
             audios,
+            resolved_media.analysis_images,
         )
         return hash(
             (
@@ -552,6 +563,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         video_count: int,
         audio_count: int,
         payload_labels: List[str],
+        analysis_payload_labels: Tuple[str, ...] = (),
         reference_prompt_content: str = "",
         base_mode: bool = False,
         h3_mode: str = "T2VA",
@@ -576,6 +588,16 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         reference_prompt_block = cls._format_reference_prompt_block(
             reference_prompt_content
         )
+        analysis_block = ""
+        if analysis_payload_labels:
+            analysis_block = (
+                "[Analysis-only visual references]\n"
+                "Use these images only to extract the visual elements explicitly requested "
+                "by the user. They are not H3 keyframes or Ref2VA media, must not change "
+                "the H3 generation mode, and must not create <Picture N> references in the "
+                "final prompt. Do not copy unrelated content from them.\n"
+                f"{chr(10).join(analysis_payload_labels)}\n\n"
+            )
         base_output_contract = (
             "[Mandatory final output contract]\n"
             "Use these exact ASCII field headers in this exact order:\n"
@@ -612,11 +634,9 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     f"- VLM Image {index}: {role}-frame visual anchor"
                     for index, role in enumerate(roles, 1)
                 )
-                runtime_context = (
+                keyframe_block = (
                     "[Keyframe inventory]\n"
                     f"{keyframe_lines}\n\n"
-                    "[VLM visual payload mapping]\n"
-                    f"{chr(10).join(payload_labels)}\n\n"
                 )
                 runtime_rule = H3_BASE_KEYFRAME_RULE
                 final_instruction = (
@@ -624,9 +644,25 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "Describe continuous motion between them without emitting reference labels."
                 )
             else:
-                runtime_context = ""
+                keyframe_block = ""
                 runtime_rule = H3_T2V_RULE
-                final_instruction = "Create one coherent text-to-video prompt using only the supplied text."
+                final_instruction = (
+                    "Create one coherent text-to-video prompt using the supplied text"
+                    + (
+                        " and only the requested traits extracted from the analysis images."
+                        if analysis_payload_labels
+                        else "."
+                    )
+                )
+            payload_mapping_block = (
+                "[VLM visual payload mapping]\n"
+                f"{chr(10).join(payload_labels)}\n\n"
+                if payload_labels
+                else ""
+            )
+            runtime_context = (
+                f"{keyframe_block}{analysis_block}{payload_mapping_block}"
+            )
             return (
                 f"{content_rule_block}"
                 "[User intent]\n"
@@ -668,6 +704,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             f"{content_rule_block}"
             "[Reference inventory]\n"
             f"{chr(10).join(reference_lines)}\n\n"
+            f"{analysis_block}"
             "[VLM visual payload mapping]\n"
             f"{payload_mapping}\n\n"
             "[User intent]\n"
@@ -795,14 +832,16 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             keyframe_roles: Tuple[str, ...] = ()
             synchronized_audio_count = 0
             synchronized_audio_video_indices: Tuple[int, ...] = ()
+            resolved_media = resolve_h3_media_inputs(
+                context_inputs,
+                images=images,
+                videos=videos,
+                audios=audios,
+            )
+            images = resolved_media.images
+            videos = resolved_media.videos
+            audios = resolved_media.audios
             if context_inputs is not None:
-                if any(any(True for _ in iter_input_values(value)) for value in (images, videos, audios)):
-                    raise ValueError(
-                        "When H3 Context is connected, leave the separate image, video, and audio inputs disconnected."
-                    )
-                images = context_inputs.images
-                videos = context_inputs.videos
-                audios = context_inputs.audios
                 if not fusion_description:
                     fusion_description = context_inputs.prompt.strip()
                 output_style = H3_OUTPUT_STYLE
@@ -812,6 +851,9 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 synchronized_audio_video_indices = context_inputs.synchronized_audio_video_indices
 
             image_frames = collect_image_frames(images)
+            analysis_image_frames = collect_image_frames(
+                resolved_media.analysis_images
+            )
             videos = collect_video_references(videos)
             audios = collect_audio_references(audios)
             is_h3 = output_style == H3_OUTPUT_STYLE
@@ -909,13 +951,37 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 raise ValueError(f"Please configure API key and model for {vlm_service}")
 
             model_image_limit = get_model_max_images(provider_config.get("model"))
+            selected_analysis_frames: List[torch.Tensor] = []
+            analysis_payload_labels: Tuple[str, ...] = ()
             if is_h3:
+                max_payload_images = max(1, min(model_image_limit, 32))
                 if is_text_to_video:
-                    images_data = []
-                    payload_labels = []
-                    preview_tensor = torch.zeros((1, 1, 1, 3), dtype=torch.float32)
+                    selected_analysis_frames = analysis_image_frames[:max_payload_images]
+                    payload_labels = [
+                        f"VLM Image {index} => analysis-only Image {index} "
+                        f"(user-facing Image {index} / 图{index})"
+                        for index in range(1, len(selected_analysis_frames) + 1)
+                    ]
+                    analysis_payload_labels = tuple(payload_labels)
+                    if selected_analysis_frames:
+                        payload_tensor = normalize_frames(selected_analysis_frames)
+                        images_data, preview_tensor = cls._tensor_to_data_urls(
+                            payload_tensor, max_images=payload_tensor.shape[0]
+                        )
+                    else:
+                        images_data = []
+                        preview_tensor = torch.zeros(
+                            (1, 1, 1, 3), dtype=torch.float32
+                        )
                 elif is_h3_base:
-                    payload_tensor = normalize_frames(image_frames)
+                    if len(image_frames) > max_payload_images:
+                        raise ValueError(
+                            "The selected VLM cannot inspect every H3 keyframe in one request: "
+                            f"needs {len(image_frames)} images, model limit is {max_payload_images}."
+                        )
+                    selected_analysis_frames = analysis_image_frames[
+                        : max_payload_images - len(image_frames)
+                    ]
                     roles = keyframe_roles or tuple(
                         "first" if index == 0 else "last"
                         for index in range(len(image_frames))
@@ -924,18 +990,46 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                         f"VLM Image {index} => {role}-frame visual anchor"
                         for index, role in enumerate(roles, 1)
                     ]
+                    analysis_payload_labels = tuple(
+                        f"VLM Image {len(image_frames) + index} => analysis-only Image {index} "
+                        f"(user-facing Image {index} / 图{index})"
+                        for index in range(1, len(selected_analysis_frames) + 1)
+                    )
+                    payload_labels.extend(analysis_payload_labels)
+                    payload_tensor = normalize_frames(
+                        [*image_frames, *selected_analysis_frames]
+                    )
                     images_data, preview_tensor = cls._tensor_to_data_urls(
                         payload_tensor,
                         max_images=payload_tensor.shape[0],
                     )
                 else:
-                    max_payload_images = max(1, min(model_image_limit, 32))
+                    minimum_h3_payload = len(image_frames) + len(videos)
+                    analysis_slots = min(
+                        len(analysis_image_frames),
+                        max(0, max_payload_images - minimum_h3_payload),
+                    )
+                    selected_analysis_frames = analysis_image_frames[:analysis_slots]
                     payload_tensor, payload_labels = build_visual_payload(
                         image_frames,
                         videos,
-                        max_payload_images=max_payload_images,
+                        max_payload_images=max_payload_images - analysis_slots,
                         frames_per_video=video_frames_per_ref,
                     )
+                    analysis_payload_labels = tuple(
+                        f"VLM Image {payload_tensor.shape[0] + index} => analysis-only Image {index} "
+                        f"(user-facing Image {index} / 图{index})"
+                        for index in range(1, len(selected_analysis_frames) + 1)
+                    )
+                    payload_labels.extend(analysis_payload_labels)
+                    if selected_analysis_frames:
+                        h3_payload_frames = [
+                            payload_tensor[index : index + 1]
+                            for index in range(payload_tensor.shape[0])
+                        ]
+                        payload_tensor = normalize_frames(
+                            [*h3_payload_frames, *selected_analysis_frames]
+                        )
                     images_data, preview_tensor = cls._tensor_to_data_urls(
                         payload_tensor, max_images=payload_tensor.shape[0]
                     )
@@ -947,16 +1041,25 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     video_count=len(videos),
                     audio_count=len(audios),
                     payload_labels=payload_labels,
+                    analysis_payload_labels=analysis_payload_labels,
                     reference_prompt_content=reference_prompt_content,
                     base_mode=is_h3_base,
                     h3_mode=mode_name,
                     keyframe_roles=keyframe_roles,
                     synchronized_audio_video_indices=synchronized_audio_video_indices,
                 )
+                analysis_manifest = (
+                    "\nAnalysis-only images sent to VLM: "
+                    f"{len(selected_analysis_frames)}/{len(analysis_image_frames)}; "
+                    "excluded from MiniMax H3 media and mode selection."
+                    if analysis_image_frames
+                    else ""
+                )
                 if is_text_to_video:
                     reference_manifest = (
                         "MiniMax H3 T2V: no image, video, or audio references.\n"
                         f"User intent: {fusion_description or '(empty)'}"
+                        f"{analysis_manifest}"
                     )
                 elif is_h3_base:
                     role_lines = "\n".join(
@@ -967,11 +1070,12 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                         "MiniMax H3 Base keyframe inputs:\n"
                         f"{role_lines}\n"
                         f"User intent: {fusion_description or '(empty)'}"
+                        f"{analysis_manifest}"
                     )
                 else:
                     reference_manifest = build_h3_reference_manifest(
                         len(image_frames), videos, audios, payload_labels, fusion_description
-                    )
+                    ) + analysis_manifest
             else:
                 if image_frames:
                     batch = normalize_frames(image_frames)
@@ -1012,7 +1116,12 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 model_display,
                 rule_name,
                 {
-                    "图片参考": len(image_frames),
+                    ("H3图片参考" if is_h3 else "图片参考"): len(image_frames),
+                    "分析图片": (
+                        f"{len(selected_analysis_frames)}/{len(analysis_image_frames)}"
+                        if context_inputs is not None
+                        else 0
+                    ),
                     "视频参考": len(videos),
                     "音频参考": len(audios),
                     "VLM视觉载荷": len(images_data),

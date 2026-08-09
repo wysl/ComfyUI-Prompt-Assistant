@@ -237,7 +237,7 @@
         "inputs": {
             "images": {
                 "name": "图像批次",
-                "tooltip": "可选。IMAGE 批次或 ComfyUI IMAGE 列表，按列表顺序对应图1、图2；可在融合描述中分别指定每张图提供的人物、服装、环境等元素"
+                "tooltip": "可选。IMAGE 批次或 ComfyUI IMAGE 列表，按顺序对应图1、图2；连接 H3 Context 时仅作为视觉分析素材，不会成为首帧、末帧或 Ref2VA 媒体，也不会改变 H3 模式"
             },
             "videos": {
                 "name": "视频批次",
@@ -249,7 +249,7 @@
             },
             "h3_context": {
                 "name": "H3 Context",
-                "tooltip": "连接 MiniMax H3 Easy 的 H3 Context，自动读取原提示词、生成模式和有序媒体输入"
+                "tooltip": "连接 MiniMax H3 Easy 的 H3 Context，自动读取原提示词、生成模式和有序 H3 媒体；单独连接的图像批次仍仅用于元素分析"
             },
             "fusion_description": {
                 "name": "融合描述",
