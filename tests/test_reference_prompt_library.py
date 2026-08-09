@@ -30,6 +30,7 @@ def load_prompt_builder_class():
         "_format_image_role_directives",
         "_format_user_intent_block",
         "_build_prompt",
+        "_resolve_h3_mode_name",
         "_build_h3_prompt",
         "_sanitize_fusion_prompt",
         "_sanitize_storyboard_prompt",
@@ -138,23 +139,28 @@ class ReferencePromptBuilderTests(unittest.TestCase):
     def test_h3_prompt_keeps_h3_rule_and_adds_reference(self):
         prompt = self.builder._build_h3_prompt(
             rule_content="SELECTED H3 RULE",
+            output_style_rule="OFFICIAL H3 OUTPUT STYLE",
             fusion_description="USER INTENT",
             image_count=1,
             video_count=0,
             audio_count=0,
             payload_labels=["<Picture 1>: payload image 1"],
-            additional_rule="ADDITIONAL RULE",
             reference_prompt_content="SELECTED DETAIL",
         )
         self.assertIn("SELECTED H3 RULE", prompt)
+        self.assertIn("OFFICIAL H3 OUTPUT STYLE", prompt)
         self.assertIn("BASE H3 RULE", prompt)
-        self.assertIn("ADDITIONAL RULE", prompt)
         self.assertIn("SELECTED DETAIL", prompt)
         self.assertIn("later file has higher priority", prompt)
+        self.assertGreater(
+            prompt.index("OFFICIAL H3 OUTPUT STYLE"),
+            prompt.index("SELECTED H3 RULE"),
+        )
 
     def test_h3_without_media_builds_text_to_video_prompt(self):
         prompt = self.builder._build_h3_prompt(
             rule_content="SELECTED H3 RULE",
+            output_style_rule="OFFICIAL H3 OUTPUT STYLE",
             fusion_description="USER T2V INTENT",
             image_count=0,
             video_count=0,
@@ -171,6 +177,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
     def test_h3_reference_prompt_identifies_synchronized_video_audio(self):
         prompt = self.builder._build_h3_prompt(
             rule_content="SELECTED H3 RULE",
+            output_style_rule="OFFICIAL H3 OUTPUT STYLE",
             fusion_description="KEEP THE SOUNDTRACK",
             image_count=0,
             video_count=2,
@@ -184,6 +191,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
     def test_h3_base_keyframes_use_three_core_prompt_contract(self):
         prompt = self.builder._build_h3_prompt(
             rule_content="SELECTED H3 RULE",
+            output_style_rule="OFFICIAL H3 OUTPUT STYLE",
             fusion_description="MOVE BETWEEN KEYFRAMES",
             image_count=2,
             video_count=0,
@@ -200,6 +208,22 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("first-frame visual anchor", prompt)
         self.assertIn("last-frame visual anchor", prompt)
         self.assertNotIn("<Picture 1>", prompt)
+
+    def test_h3_mode_resolution_distinguishes_base_keyframe_roles(self):
+        self.assertEqual(self.builder._resolve_h3_mode_name(0, True, ()), "T2VA")
+        self.assertEqual(
+            self.builder._resolve_h3_mode_name(1, True, ("first",)), "I2VA"
+        )
+        self.assertEqual(
+            self.builder._resolve_h3_mode_name(1, True, ("last",)), "L2VA"
+        )
+        self.assertEqual(
+            self.builder._resolve_h3_mode_name(2, True, ("first", "last")),
+            "FL2VA",
+        )
+        self.assertEqual(
+            self.builder._resolve_h3_mode_name(1, False, ()), "Ref2VA"
+        )
 
     def test_storyboard_prompt_uses_independent_next_scene_contract(self):
         prompt = self.builder._build_prompt(

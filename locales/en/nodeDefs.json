@@ -273,7 +273,7 @@
             },
             "output_style": {
                 "name": "Output Style",
-                "tooltip": "Storyboard Images emits five independent single-line Next Scene: body prompts by default; MiniMax H3 uses T2V without media and Ref2VA with media"
+                "tooltip": "Storyboard Images emits five independent single-line Next Scene: prompts by default; MiniMax H3 applies its built-in final output rule and automatically selects T2VA, I2VA, FL2VA, L2VA, or Ref2VA from Context"
             },
             "video_frames_per_ref": {
                 "name": "Frames Per Video",

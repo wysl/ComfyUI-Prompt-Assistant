@@ -6,6 +6,12 @@ import tempfile
 import shutil
 import folder_paths
 
+
+DEPRECATED_BUILTIN_PROMPTS = {
+    "fusion_prompts": ("fusion_minimax_h3",),
+}
+
+
 class ConfigManager:
     def __init__(self):
         # 插件目录
@@ -140,9 +146,17 @@ class ConfigManager:
                 system_prompts[group] = copy.deepcopy(default_group)
                 prompts_modified = True
 
+        for group, prompt_ids in DEPRECATED_BUILTIN_PROMPTS.items():
+            prompts = system_prompts.get(group)
+            if not isinstance(prompts, dict):
+                continue
+            for prompt_id in prompt_ids:
+                if prompts.pop(prompt_id, None) is not None:
+                    prompts_modified = True
+
         if prompts_modified:
             self.save_system_prompts(system_prompts)
-            self._log("已补全缺失的规则管理器分组")
+            self._log("已同步规则管理器内置结构")
 
         active_prompts = self.load_active_prompts()
         if not isinstance(active_prompts, dict):
@@ -153,6 +167,17 @@ class ConfigManager:
             if prompt_type not in active_prompts:
                 active_prompts[prompt_type] = default_id
                 active_modified = True
+
+        deprecated_fusion_ids = DEPRECATED_BUILTIN_PROMPTS["fusion_prompts"]
+        if active_prompts.get("fusion") in deprecated_fusion_ids:
+            fusion_prompts = system_prompts.get("fusion_prompts", {})
+            default_fusion_id = self.default_active_prompts.get("fusion", "")
+            active_prompts["fusion"] = (
+                default_fusion_id
+                if default_fusion_id in fusion_prompts
+                else next(iter(fusion_prompts), "")
+            )
+            active_modified = True
 
         if active_modified:
             self.save_active_prompts(active_prompts)
@@ -166,7 +191,6 @@ class ConfigManager:
     # ---模板加载---
     def _hydrate_prompt_content_files(self, data: dict) -> None:
         """Resolve built-in prompt content files under the template directory."""
-        template_root = os.path.realpath(self.templates_dir)
         prompt_types = (
             "expand_prompts",
             "vision_prompts",
@@ -185,17 +209,26 @@ class ConfigManager:
                 if not relative_path:
                     continue
                 try:
-                    content_path = os.path.realpath(
-                        os.path.join(template_root, str(relative_path))
-                    )
-                    if os.path.commonpath((content_path, template_root)) != template_root:
-                        raise ValueError("规则内容文件超出模板目录")
-                    if not content_path.lower().endswith((".md", ".txt")):
-                        raise ValueError("规则内容文件只支持 Markdown 或 TXT")
-                    with open(content_path, "r", encoding="utf-8-sig") as content_file:
-                        prompt["content"] = content_file.read().strip()
+                    prompt["content"] = self._load_builtin_prompt_text(relative_path)
                 except Exception as error:
                     self._log(f"加载内置规则文件 {prompt_id} 失败: {error}")
+
+    def _load_builtin_prompt_text(self, relative_path: str) -> str:
+        """Load a Markdown/TXT prompt asset confined to the template directory."""
+        template_root = os.path.realpath(self.templates_dir)
+        content_path = os.path.realpath(
+            os.path.join(template_root, str(relative_path))
+        )
+        if os.path.commonpath((content_path, template_root)) != template_root:
+            raise ValueError("规则内容文件超出模板目录")
+        if not content_path.lower().endswith((".md", ".txt")):
+            raise ValueError("规则内容文件只支持 Markdown 或 TXT")
+        with open(content_path, "r", encoding="utf-8-sig") as content_file:
+            return content_file.read().strip()
+
+    def get_h3_output_style_rule(self) -> str:
+        """Return the built-in MiniMax H3 automatic output-style contract."""
+        return self._load_builtin_prompt_text("minimax_h3_rule.md")
 
     def _load_template(self, template_name: str, fallback: dict = None) -> dict:
         """

@@ -233,7 +233,7 @@
     },
     "MultiImageFusionNode": {
         "display_name": "✨Multimedia Reference Fusion Prompt",
-        "description": "Build a single-image prompt from images or a MiniMax H3 Ref2VA prompt from image, video, and audio references",
+        "description": "Build a single-image prompt or automatically produce the matching MiniMax H3 Base/Ref prompt from H3 Context",
         "inputs": {
             "images": {
                 "name": "Images Batch",

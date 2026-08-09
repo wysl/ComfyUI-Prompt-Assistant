@@ -10,6 +10,7 @@ from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 import torch
 
 
+# Stable serialized combo value for existing workflows; behavior now auto-routes all H3 modes.
 H3_OUTPUT_STYLE = "MiniMax H3 Ref2VA"
 H3_MAX_IMAGES = 9
 H3_MAX_VIDEOS = 3

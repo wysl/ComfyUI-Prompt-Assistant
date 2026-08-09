@@ -233,7 +233,7 @@
     },
     "MultiImageFusionNode": {
         "display_name": "✨多媒體參考融合提示詞",
-        "description": "根據參考圖片生成單圖提示詞，或根據圖片、影片、音訊生成 MiniMax H3 Ref2VA 提示詞",
+        "description": "根據參考圖片生成單圖提示詞，或根據 H3 Context 自動生成 T2VA、I2VA、FL2VA、L2VA、Ref2VA 提示詞",
         "inputs": {
             "images": {
                 "name": "圖像批次",

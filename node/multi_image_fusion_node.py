@@ -78,21 +78,21 @@ DEFAULT_FUSION_RULE = """Role
 
 H3_REF2VA_RULE = """[Execution mode: Full-Reference / Ref2VA]
 Media references are present. Follow the Full-Reference six-section structure
-from the selected MiniMax-H3 rule. Use every supplied media label exactly once
+from the MiniMax H3 output style. Use every supplied media label exactly once
 or more where relevant, never renumber or invent labels, and do not infer exact
 audio speech, lyrics, or sound content that the user did not describe."""
 
 
 H3_T2V_RULE = """[Execution mode: T2VA]
 No image, video, or audio reference is present. Follow the T2VA three-core
-structure from the selected MiniMax-H3 rule: integrated_multimodal_description,
+structure from the MiniMax H3 output style: integrated_multimodal_description,
 overall_soundscape, then non_diegetic_music. Do not emit any Picture, Video,
 Audio, Subject, summary, retention_analysis, or detailed_description field."""
 
 
-H3_BASE_KEYFRAME_RULE = """[Execution mode: H3 Base / FL2VA]
+H3_BASE_KEYFRAME_RULE = """[Execution mode: H3 Base keyframe mode]
 One or two keyframe images are present. Use them as first/last-frame visual
-anchors and follow the selected MiniMax-H3 Base three-core structure:
+anchors and follow the MiniMax H3 Base three-core structure:
 integrated_multimodal_description, overall_soundscape, then
 non_diegetic_music. Do not emit Picture, Video, Audio, Subject, summary,
 retention_analysis, or detailed_description fields, and do not label the
@@ -218,8 +218,8 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     default="Auto",
                     tooltip=(
                         "Preferred output style. Storyboard Images emits independent "
-                        "Next Scene blocks. MiniMax H3 Ref2VA preserves Picture/Video/Audio "
-                        "reference labels and emits six sections."
+                        "Next Scene blocks. MiniMax H3 automatically selects T2VA, "
+                        "I2VA, FL2VA, L2VA, or Ref2VA from the connected context."
                     ),
                 ),
                 io.Int.Input(
@@ -528,29 +528,58 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             "若需要借用某张参考图的动作/道具/场景，请直接写成最终画面里的元素，不要标注来源。"
         )
 
+    @staticmethod
+    def _resolve_h3_mode_name(
+        image_count: int,
+        is_h3_base: bool,
+        keyframe_roles: Tuple[str, ...],
+    ) -> str:
+        if not is_h3_base:
+            return "Ref2VA"
+        if image_count == 0:
+            return "T2VA"
+        if image_count >= 2:
+            return "FL2VA"
+        return "L2VA" if keyframe_roles == ("last",) else "I2VA"
+
     @classmethod
     def _build_h3_prompt(
         cls,
         rule_content: str,
+        output_style_rule: str,
         fusion_description: str,
         image_count: int,
         video_count: int,
         audio_count: int,
         payload_labels: List[str],
-        additional_rule: str = "",
         reference_prompt_content: str = "",
         base_mode: bool = False,
+        h3_mode: str = "T2VA",
         keyframe_roles: Tuple[str, ...] = (),
         synchronized_audio_video_indices: Tuple[int, ...] = (),
     ) -> str:
+        content_rule_block = (
+            "[Selected content preset]\n"
+            "Use this preset for creative and semantic decisions. The MiniMax H3 output "
+            "style below overrides any conflicting instructions about generation mode, "
+            "output language, headings, field names, section order, reference labels, or "
+            "timing syntax.\n"
+            f"{rule_content.strip()}\n\n"
+        )
+        output_style_block = (
+            "[MiniMax H3 output style - highest priority]\n"
+            "Apply this complete output-style rule to the requested content. Its mode and "
+            "formatting requirements are mandatory and override the selected content preset "
+            "and reference material whenever they conflict.\n"
+            f"{output_style_rule.strip()}\n\n"
+        )
+        reference_prompt_block = cls._format_reference_prompt_block(
+            reference_prompt_content
+        )
+
         if base_mode or (image_count == 0 and video_count == 0 and audio_count == 0):
             intent = fusion_description or (
                 "(empty; create a coherent target video from the selected text references)"
-            )
-            additional_rule_block = (
-                f"\n\n[Additional user rule]\n{additional_rule.strip()}"
-                if additional_rule and additional_rule.strip()
-                else ""
             )
             if image_count:
                 roles = keyframe_roles or tuple(
@@ -560,27 +589,31 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     f"- VLM Image {index}: {role}-frame visual anchor"
                     for index, role in enumerate(roles, 1)
                 )
-                keyframe_block = (
-                    f"{H3_BASE_KEYFRAME_RULE}\n\n"
+                runtime_context = (
                     "[Keyframe inventory]\n"
                     f"{keyframe_lines}\n\n"
                     "[VLM visual payload mapping]\n"
                     f"{chr(10).join(payload_labels)}\n\n"
                 )
+                runtime_rule = H3_BASE_KEYFRAME_RULE
                 final_instruction = (
-                    "Create one coherent H3 Base prompt anchored to the supplied keyframes. "
+                    f"Create one coherent {h3_mode} prompt anchored to the supplied keyframes. "
                     "Describe continuous motion between them without emitting reference labels."
                 )
             else:
-                keyframe_block = f"{H3_T2V_RULE}\n\n"
+                runtime_context = ""
+                runtime_rule = H3_T2V_RULE
                 final_instruction = "Create one coherent text-to-video prompt using only the supplied text."
             return (
-                f"{rule_content.strip()}\n\n"
-                f"{keyframe_block}"
+                f"{content_rule_block}"
                 "[User intent]\n"
-                f"{intent}"
-                f"{additional_rule_block}\n\n"
-                f"{cls._format_reference_prompt_block(reference_prompt_content)}"
+                f"{intent}\n\n"
+                f"{reference_prompt_block}"
+                f"{runtime_context}"
+                f"{output_style_block}"
+                f"[Resolved runtime mode: {h3_mode}]\n"
+                f"{runtime_rule}\n\n"
+                "[Final task]\n"
                 f"{final_instruction}"
             )
 
@@ -607,22 +640,19 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         )
         payload_mapping = "\n".join(f"  {line}" for line in payload_labels)
         intent = fusion_description or "(empty; infer a coherent target audiovisual scene from the references)"
-        additional_rule_block = (
-            f"\n\n[Additional user rule]\n{additional_rule.strip()}"
-            if additional_rule and additional_rule.strip()
-            else ""
-        )
         return (
-            f"{rule_content.strip()}\n\n"
-            f"{H3_REF2VA_RULE}\n\n"
+            f"{content_rule_block}"
             "[Reference inventory]\n"
             f"{chr(10).join(reference_lines)}\n\n"
             "[VLM visual payload mapping]\n"
             f"{payload_mapping}\n\n"
             "[User intent]\n"
-            f"{intent}"
-            f"{additional_rule_block}\n\n"
-            f"{cls._format_reference_prompt_block(reference_prompt_content)}"
+            f"{intent}\n\n"
+            f"{reference_prompt_block}"
+            f"{output_style_block}"
+            "[Resolved runtime mode: Ref2VA]\n"
+            f"{H3_REF2VA_RULE}\n\n"
+            "[Final task]\n"
             "Use all relevant references in a single coherent target video. Keep the reference labels in the final text; "
             "do not replace them with generic words such as image or source."
         )
@@ -779,10 +809,14 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     )
                 rule_content, selected_rule_name = cls._resolve_rule_content(
                     rule,
-                    False,
-                    "",
+                    custom_rule,
+                    custom_rule_content,
                 )
-                mode_name = "T2VA" if is_text_to_video else ("FL2VA" if is_h3_base else "Ref2VA")
+                mode_name = cls._resolve_h3_mode_name(
+                    len(image_frames),
+                    is_h3_base,
+                    keyframe_roles,
+                )
                 rule_name = f"{selected_rule_name} / {mode_name}"
             else:
                 if videos or audios:
@@ -810,6 +844,9 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
 
             from ..config_manager import config_manager
 
+            h3_output_style_rule = (
+                config_manager.get_h3_output_style_rule() if is_h3 else ""
+            )
             service = config_manager.get_service(service_id)
             if not service:
                 raise ValueError(f"Service config not found: {vlm_service}")
@@ -879,14 +916,15 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     )
                 prompt_to_send = cls._build_h3_prompt(
                     rule_content=rule_content,
+                    output_style_rule=h3_output_style_rule,
                     fusion_description=fusion_description,
                     image_count=len(image_frames),
                     video_count=len(videos),
                     audio_count=len(audios),
                     payload_labels=payload_labels,
-                    additional_rule=custom_rule_content if custom_rule else "",
                     reference_prompt_content=reference_prompt_content,
                     base_mode=is_h3_base,
+                    h3_mode=mode_name,
                     keyframe_roles=keyframe_roles,
                     synchronized_audio_video_indices=synchronized_audio_video_indices,
                 )
@@ -954,11 +992,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "音频参考": len(audios),
                     "VLM视觉载荷": len(images_data),
                     "输出风格": output_style,
-                    "生成模式": (
-                        "T2V"
-                        if is_text_to_video
-                        else ("FL2VA" if is_h3_base else "媒体参考融合")
-                    ),
+                    "生成模式": mode_name if is_h3 else "标准融合",
                     "自备提示词参考": "已连接" if reference_prompt_content.strip() else "未连接",
                 },
             )

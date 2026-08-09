@@ -28,11 +28,11 @@
 <summary><strong>[2026-08-07] 🔥当前开发版</strong></summary>
 
 **Changes:**
-* **MiniMax H3 Easy 闭环接入**：多媒体参考融合提示词节点新增 `H3 Context` 输入，可自动复用 Easy 节点的原提示词、T2VA/FL2VA/Ref2VA 模式与有序媒体；融合提示词可直接回接 Easy Output 的“优化后的提示词”输入并重新编码 Conditioning。
+* **MiniMax H3 Easy 闭环接入**：多媒体参考融合提示词节点新增 `H3 Context` 输入，可自动复用 Easy 节点的原提示词、T2VA/I2VA/FL2VA/L2VA/Ref2VA 模式与有序媒体；融合提示词可直接回接 Easy Output 的“优化后的提示词”输入并重新编码 Conditioning。
 * **规则管理器分组修复**：修复多媒体参考规则错误依赖视频规则、残缺用户配置不自动补全以及窄窗口标签不可见的问题；插件版本更新至 `2.1.4`。
 * **多分镜图片输出**：多媒体参考融合提示词节点新增 `Storyboard Images` 风格，默认一次生成5段以 `Next Scene:` 开头、人物连续且可独立生图的静态分镜提示词。
-* **MiniMax H3 T2V / Ref2VA**：多媒体参考融合提示词节点统一使用可选的 `images`、`videos`、`audios` 批次/列表端口；三个媒体输入全空时生成纯文本 T2V 提示词，存在媒体时生成 Ref2VA 六段式提示词。
-* **MiniMax H3 最终规则**：内置 `minimax h3` 预设更新为最终优化版，加入人脸景别、跨镜动作连续性和运动方向锁定约束；节点执行与规则管理共用同一规则源。
+* **MiniMax H3 自动模式**：多媒体参考融合提示词节点统一使用可选的 `images`、`videos`、`audios` 批次/列表端口，并根据 H3 Context 自动生成 T2VA、I2VA、FL2VA、L2VA 或 Ref2VA 提示词。
+* **MiniMax H3 最终规则**：最终优化版不再占用“规则预设”，改为 MiniMax H3 输出风格的内置格式契约；所选规则预设负责内容，输出风格负责模式、字段和顺序。
 * **自备提示词参考库**：新增多媒体参考提示词库节点，可从多级目录跨目录多选 TXT 文件，调整融合优先级后接入多媒体参考融合提示词节点。
 * **正确处理图像批次**：连接包含多张图的 `IMAGE` batch 时，节点会沿批次维逐张读取，不再把整批 Tensor 当成单张图处理。
 * **Google Cloud 翻译**：新增官方 Cloud Translation Basic v2，可用于小助手、翻译节点和节点帮助文档翻译。
@@ -326,7 +326,7 @@
 
 #### 🧩多媒体参考融合提示词
 
-`普通模式支持零张、单张或多张参考图：有手写描述或自备提示词参考时可纯文本生成。Storyboard Images 风格默认一次输出5段以 Next Scene: 开头、人物设定完整重复的独立静态分镜。选择 MiniMax H3 输出风格后，三个媒体输入全空时生成纯文本 T2V 提示词；存在媒体时组合图片、视频、音频参考，并输出带 <Picture N>、<Video N>、<Audio N>、<Subject N> 标签的 Ref2VA 六段式提示词。`
+`普通模式支持零张、单张或多张参考图：有手写描述或自备提示词参考时可纯文本生成。Storyboard Images 风格默认一次输出5段以 Next Scene: 开头、人物设定完整重复的独立静态分镜。选择 MiniMax H3 输出风格后，节点根据文字、首帧、末帧、首尾帧或完整多媒体参考自动选择 T2VA、I2VA、L2VA、FL2VA 或 Ref2VA，并输出对应的官方字段结构。`
 
 
 #### 🔖标签、短语预设与收藏
@@ -398,9 +398,9 @@
 
 `多图输入可在融合描述中指定元素来源，例如“人物与装扮取自图1，环境取自图2”。Storyboard Images 会把这类图 N 指令提升为最高优先级元素绑定：只提取对应图片中被点名的类别，丢弃未指定类别，并将重组后的人物、服装与环境统一应用到所有分镜，而不是让一张参考图对应一个输出分镜。`
 
-`MiniMax H3 模式下，images、videos、audios 均为可选输入。三个媒体批次全部为空时自动使用纯文本 T2VA，输出 integrated_multimodal_description、overall_soundscape、non_diegetic_music 三核心；存在媒体时使用 Ref2VA，并通过 videos 和 audios 列表/批次端口支持最多9张参考图、3段参考视频和3段参考音频。视频会抽取代表帧供视觉模型理解，音频批次会按波形批次维拆分并读取时长，再依据融合描述安排用途。Ref2VA 输出使用 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式，可直接连接 MiniMax H3 节点的 prompt 输入。`
+`MiniMax H3 模式下，最终版 H3 规则作为内置输出风格自动应用，不再出现在“规则预设”列表；用户仍可选择任意内容预设。无媒体时使用 T2VA；一张首帧或末帧分别使用 I2VA 或 L2VA；两张首尾帧使用 FL2VA，均输出 integrated_multimodal_description、overall_soundscape、non_diegetic_music 三核心。完整参考模式通过 videos 和 audios 列表/批次端口支持最多9张参考图、3段参考视频和3段参考音频，并输出 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式。`
 
-`安装配套版本的 ComfyUI-MiniMaxH3-Easy 后，可把 Easy 主节点的 H3 Context 同时连接到本节点和 Easy Output。本节点会自动读取原提示词、模式与媒体：纯文本使用 T2VA 三核心，首帧/尾帧使用 FL2VA 三核心，完整参考模式使用 Ref2VA 六段式。再把“融合提示词”输出连接到 Easy Output 的“优化后的提示词”，即可在保留同一批媒体条件的前提下重新编码 Conditioning；此时无需重复连接 images、videos、audios。`
+`安装配套版本的 ComfyUI-MiniMaxH3-Easy 后，可把 Easy 主节点的 H3 Context 同时连接到本节点和 Easy Output。本节点会自动读取原提示词、模式与媒体：纯文本使用 T2VA，单首帧/单末帧使用 I2VA/L2VA，首尾帧使用 FL2VA，完整参考模式使用 Ref2VA。再把“融合提示词”输出连接到 Easy Output 的“优化后的提示词”，即可在保留同一批媒体条件的前提下重新编码 Conditioning；此时无需重复连接 images、videos、audios。`
 
 #### **🔹多媒体参考提示词库节点**
 `✨Prompt Assistant → 多媒体参考提示词库`

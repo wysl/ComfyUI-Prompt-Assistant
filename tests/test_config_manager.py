@@ -69,19 +69,53 @@ class ConfigManagerTests(unittest.TestCase):
             {"service": "google_web", "model": ""},
         )
 
-    def test_minimax_h3_preset_loads_external_rule_source(self):
+    def test_minimax_h3_output_style_loads_external_rule_source(self):
         manager = object.__new__(self.config_manager_class)
         manager.templates_dir = str(ROOT / "config")
         manager._template_versions = {}
         manager._log = lambda message: None
 
         data = manager._load_template("system_prompts", {})
-        preset = data["fusion_prompts"]["fusion_minimax_h3"]
+        output_style_rule = manager.get_h3_output_style_rule()
 
-        self.assertNotIn("content_file", preset)
-        self.assertIn("MiniMax-H3 视频提示词优化规则（最终版）", preset["content"])
-        self.assertIn("禁止在切换运镜/剪切之后复读", preset["content"])
-        self.assertIn("全片锁定主体运动方向与朝向", preset["content"])
+        self.assertNotIn("fusion_minimax_h3", data["fusion_prompts"])
+        self.assertIn("MiniMax-H3 视频提示词优化规则（最终版）", output_style_rule)
+        self.assertIn("禁止在切换运镜/剪切之后复读", output_style_rule)
+        self.assertIn("全片锁定主体运动方向与朝向", output_style_rule)
+
+    def test_deprecated_minimax_h3_preset_is_removed_and_active_rule_is_repaired(self):
+        manager = object.__new__(self.config_manager_class)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manager.system_prompts_path = str(root / "system_prompts.json")
+            manager.active_prompts_path = str(root / "active_prompts.json")
+            manager.default_system_prompts = {
+                "expand_prompts": {},
+                "translate_prompts": {},
+                "vision_prompts": {},
+                "video_prompts": {},
+                "fusion_prompts": {
+                    "fusion_default": {"content": "default fusion rule"}
+                },
+            }
+            manager.default_active_prompts = {"fusion": "fusion_default"}
+            manager._log = lambda message: None
+            manager.save_system_prompts(
+                {
+                    "fusion_prompts": {
+                        "fusion_default": {"content": "default fusion rule"},
+                        "fusion_minimax_h3": {"content": "old built-in rule"},
+                    }
+                }
+            )
+            manager.save_active_prompts({"fusion": "fusion_minimax_h3"})
+
+            manager._ensure_required_prompt_structure()
+
+            prompts = manager.load_system_prompts()
+            active = manager.load_active_prompts()
+            self.assertNotIn("fusion_minimax_h3", prompts["fusion_prompts"])
+            self.assertEqual(active["fusion"], "fusion_default")
 
     def test_missing_fusion_group_is_restored_without_overwriting_other_rules(self):
         manager = object.__new__(self.config_manager_class)
