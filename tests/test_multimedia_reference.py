@@ -129,6 +129,26 @@ non_diegetic_music: N/A"""
                 prompt + "\nsummary: [reference generation] invalid", 0, 0, 0
             )
 
+    def test_h3_validation_normalizes_markdown_section_headings(self):
+        prompt = """**integrated_multimodal_description**: [Shot 1] A student enters a classroom.
+### overall_soundscape
+Quiet classroom ambience.
+`non_diegetic_music`： N/A"""
+
+        result = multimedia_reference.sanitize_h3_prompt(prompt, 0, 0, 0)
+
+        self.assertIn("integrated_multimodal_description: [Shot 1]", result)
+        self.assertIn("overall_soundscape:\nQuiet classroom ambience.", result)
+        self.assertIn("non_diegetic_music: N/A", result)
+
+    def test_h3_validation_error_includes_model_response_preview(self):
+        with self.assertRaisesRegex(
+            ValueError, "Model response preview: I cannot provide that content"
+        ):
+            multimedia_reference.sanitize_h3_prompt(
+                "I cannot provide that content.", 0, 0, 0
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

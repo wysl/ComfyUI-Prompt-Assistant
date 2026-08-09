@@ -208,6 +208,9 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("first-frame visual anchor", prompt)
         self.assertIn("last-frame visual anchor", prompt)
         self.assertNotIn("<Picture 1>", prompt)
+        self.assertIn("Use these exact ASCII field headers", prompt)
+        self.assertIn("integrated_multimodal_description:", prompt)
+        self.assertIn("Do not decorate the field headers with Markdown", prompt)
 
     def test_h3_mode_resolution_distinguishes_base_keyframe_roles(self):
         self.assertEqual(self.builder._resolve_h3_mode_name(0, True, ()), "T2VA")

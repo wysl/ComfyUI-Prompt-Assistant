@@ -576,6 +576,29 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         reference_prompt_block = cls._format_reference_prompt_block(
             reference_prompt_content
         )
+        base_output_contract = (
+            "[Mandatory final output contract]\n"
+            "Use these exact ASCII field headers in this exact order:\n"
+            "integrated_multimodal_description:\n"
+            "overall_soundscape:\n"
+            "non_diegetic_music:\n"
+            "Do not decorate the field headers with Markdown. "
+            "Do not translate, rename, or omit them. "
+            "Do not add explanations before or after the structured prompt."
+        )
+        ref_output_contract = (
+            "[Mandatory final output contract]\n"
+            "Use these exact ASCII field headers in this exact order:\n"
+            "subject_definitions:\n"
+            "summary:\n"
+            "retention_analysis:\n"
+            "detailed_description:\n"
+            "overall_soundscape:\n"
+            "non_diegetic_music:\n"
+            "Do not decorate the field headers with Markdown. "
+            "Do not translate, rename, or omit them. "
+            "Do not add explanations before or after the structured prompt."
+        )
 
         if base_mode or (image_count == 0 and video_count == 0 and audio_count == 0):
             intent = fusion_description or (
@@ -614,7 +637,8 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 f"[Resolved runtime mode: {h3_mode}]\n"
                 f"{runtime_rule}\n\n"
                 "[Final task]\n"
-                f"{final_instruction}"
+                f"{final_instruction}\n\n"
+                f"{base_output_contract}"
             )
 
         reference_lines = [
@@ -654,7 +678,8 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             f"{H3_REF2VA_RULE}\n\n"
             "[Final task]\n"
             "Use all relevant references in a single coherent target video. Keep the reference labels in the final text; "
-            "do not replace them with generic words such as image or source."
+            "do not replace them with generic words such as image or source.\n\n"
+            f"{ref_output_contract}"
         )
 
     @classmethod

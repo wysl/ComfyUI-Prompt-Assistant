@@ -374,6 +374,29 @@ def sanitize_h3_prompt(
     text = (prompt or "").strip()
     text = re.sub(r"^```(?:text|markdown)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
+    known_sections = (
+        "subject_definitions",
+        "summary",
+        "retention_analysis",
+        "detailed_description",
+        "integrated_multimodal_description",
+        "overall_soundscape",
+        "non_diegetic_music",
+    )
+    decoration = r"(?:\*\*|__|`)"
+    for section in known_sections:
+        decorated_with_colon = re.compile(
+            rf"(?im)^[ \t]*(?:#{{1,6}}[ \t]+)?(?:[-+*][ \t]+)?"
+            rf"{decoration}?[ \t]*{re.escape(section)}[ \t]*"
+            rf"(?:(?:{decoration})[ \t]*[:：]|[:：][ \t]*(?:{decoration})?)[ \t]*"
+        )
+        markdown_heading = re.compile(
+            rf"(?im)^[ \t]*(?:#{{1,6}}[ \t]+{decoration}?|{decoration})"
+            rf"[ \t]*{re.escape(section)}[ \t]*{decoration}?[ \t]*$"
+        )
+        text = decorated_with_colon.sub(f"{section}: ", text)
+        text = markdown_heading.sub(f"{section}:", text)
+
     is_t2va = image_count == 0 and video_count == 0 and audio_count == 0
     required = (
         (
@@ -394,9 +417,15 @@ def sanitize_h3_prompt(
     lowered = text.lower()
     missing = [section for section in required if section not in lowered]
     if missing:
+        response_preview = re.sub(r"\s+", " ", text).strip()[:240]
         raise ValueError(
             "MiniMax H3 output is missing required sections: "
             + ", ".join(missing)
+            + (
+                f". Model response preview: {response_preview}"
+                if response_preview
+                else ". Model returned an empty response."
+            )
         )
 
     if is_t2va:
