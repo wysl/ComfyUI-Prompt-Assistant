@@ -25,14 +25,25 @@
 ## **📣更新**
 
 <details open>
-<summary><strong>[2026-08-07] 🔥当前开发版</strong></summary>
+<summary><strong>[2026-08-09] 🔥当前开发版</strong></summary>
 
 **Changes:**
-* **MiniMax H3 Easy 闭环接入**：多媒体参考融合提示词节点新增 `H3 Context` 输入，可自动复用 Easy 节点的原提示词、T2VA/I2VA/FL2VA/L2VA/Ref2VA 模式与有序媒体；融合提示词可直接回接 Easy Output 的“优化后的提示词”输入并重新编码 Conditioning。
+* **MiniMax H3 Easy 闭环接入**：`H3 Context` 可将 Easy 节点的原提示词、生成模式与有序媒体传入“多媒体参考融合提示词”，融合结果可回接 Easy Output 的“优化后的提示词”并重新编码 Conditioning。
+* **MiniMax H3 自动输出风格**：内置最终版规则作为输出风格格式契约，根据 H3 Context 自动选择 T2VA、I2VA、FL2VA、L2VA 或 Ref2VA，并生成对应的官方三核心或六段式结构。
+* **内容预设与输出格式分离**：“规则预设”只负责剧情、动作、运镜等内容，“MiniMax H3”输出风格负责模式、语言、字段与顺序；自定义规则同样可作为 H3 内容预设使用。
+
+**Fixes:**
+* **移除重复 H3 规则预设**：不再在“规则预设”列表提供内置 `minimax h3`；升级时会自动清理旧 `fusion_minimax_h3` 配置并修复激活项。
+* **修复 H3 自定义预设格式冲突**：输出风格规则以最高格式优先级与内容预设一同提交，避免模型仅按内容预设输出而缺少 H3 必需字段。
+
+</details>
+
+<details>
+<summary><strong>[2026-08-07] 🔥开发版</strong></summary>
+
+**Changes:**
 * **规则管理器分组修复**：修复多媒体参考规则错误依赖视频规则、残缺用户配置不自动补全以及窄窗口标签不可见的问题；插件版本更新至 `2.1.4`。
 * **多分镜图片输出**：多媒体参考融合提示词节点新增 `Storyboard Images` 风格，默认一次生成5段以 `Next Scene:` 开头、人物连续且可独立生图的静态分镜提示词。
-* **MiniMax H3 自动模式**：多媒体参考融合提示词节点统一使用可选的 `images`、`videos`、`audios` 批次/列表端口，并根据 H3 Context 自动生成 T2VA、I2VA、FL2VA、L2VA 或 Ref2VA 提示词。
-* **MiniMax H3 最终规则**：最终优化版不再占用“规则预设”，改为 MiniMax H3 输出风格的内置格式契约；所选规则预设负责内容，输出风格负责模式、字段和顺序。
 * **自备提示词参考库**：新增多媒体参考提示词库节点，可从多级目录跨目录多选 TXT 文件，调整融合优先级后接入多媒体参考融合提示词节点。
 * **正确处理图像批次**：连接包含多张图的 `IMAGE` batch 时，节点会沿批次维逐张读取，不再把整批 Tensor 当成单张图处理。
 * **Google Cloud 翻译**：新增官方 Cloud Translation Basic v2，可用于小助手、翻译节点和节点帮助文档翻译。
