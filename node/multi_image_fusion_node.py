@@ -610,16 +610,19 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             ),
             "I2VA": (
                 "Use <Picture 1> as the true first frame. SHOT 1 must open exactly on "
-                "<Picture 1>, then develop forward without replaying its existing pose."
+                "<Picture 1>, then develop forward without replaying its existing pose. "
+                "The literal token <Picture 1> must appear in the final response."
             ),
             "FL2VA": (
                 "Use <Picture 1> as the true first frame and <Picture 2> as the true last "
                 "frame. Describe the continuous intermediate path; the final SHOT must "
-                "land exactly on <Picture 2>."
+                "land exactly on <Picture 2>. The literal tokens <Picture 1> and "
+                "<Picture 2> must both appear in the final response."
             ),
             "L2VA": (
                 "Use <Picture 1> as the true last frame. Infer a plausible opening and "
-                "make the final SHOT converge exactly to <Picture 1>."
+                "make the final SHOT converge exactly to <Picture 1>. The literal token "
+                "<Picture 1> must appear in the final response."
             ),
         }
         base_output_contract = (

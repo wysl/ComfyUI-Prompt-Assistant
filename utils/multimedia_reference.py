@@ -445,7 +445,7 @@ def _normalize_h3_base_headings(text: str) -> str:
     )
     text = re.sub(
         audio_prefix
-        + r"(?:\*\*|__|`)?[ \t]*(?:[:：]|[-–—])[ \t]*"
+        + r"(?:\*\*|__|`)?[ \t]*[:：][ \t]*"
         r"(?:\*\*|__|`)?[ \t]*",
         "Audio: ",
         text,
@@ -455,6 +455,56 @@ def _normalize_h3_base_headings(text: str) -> str:
         "Audio:",
         text,
     )
+
+
+def _repair_h3_base_picture_anchors(text: str, mode: str, image_count: int) -> str:
+    """Restore deterministic keyframe anchors that a model only paraphrased."""
+    mode = mode.upper()
+    if mode not in {"I2VA", "FL2VA", "L2VA"} or image_count < 1:
+        return text
+
+    shot_pattern = re.compile(
+        r"(?im)^\s*(?:\[[^\]\r\n]+\]\s*)?"
+        r"(?:shot\s+\d+|final\s+shot)\s*:\s*"
+    )
+
+    def has_picture(index: int) -> bool:
+        return bool(
+            re.search(rf"<Picture\s+{index}>", text, flags=re.IGNORECASE)
+        )
+
+    def insert_after_shot(shot_index: int, sentence: str) -> None:
+        nonlocal text
+        matches = list(shot_pattern.finditer(text))
+        if not matches:
+            return
+        match = matches[shot_index]
+        text = text[: match.end()] + sentence + " " + text[match.end() :]
+
+    if mode == "I2VA" and not has_picture(1):
+        insert_after_shot(0, "The scene opens exactly on <Picture 1>;")
+    elif mode == "L2VA" and not has_picture(1):
+        insert_after_shot(
+            -1, "The final shot converges exactly to <Picture 1> at the end."
+        )
+    elif mode == "FL2VA" and image_count >= 2:
+        missing_first = not has_picture(1)
+        missing_last = not has_picture(2)
+        shot_count = len(list(shot_pattern.finditer(text)))
+        if missing_first and missing_last and shot_count == 1:
+            insert_after_shot(
+                0,
+                "The scene opens exactly on <Picture 1>; the continuous action lands "
+                "exactly on <Picture 2> at the end.",
+            )
+        else:
+            if missing_last:
+                insert_after_shot(
+                    -1, "The final shot lands exactly on <Picture 2> at the end."
+                )
+            if missing_first:
+                insert_after_shot(0, "The scene opens exactly on <Picture 1>;")
+    return text
 
 
 def sanitize_h3_prompt(
@@ -562,6 +612,7 @@ def sanitize_h3_prompt(
                     else ""
                 )
             )
+        text = _repair_h3_base_picture_anchors(text, mode, image_count)
 
     missing_labels: List[str] = []
     invented_labels: List[str] = []

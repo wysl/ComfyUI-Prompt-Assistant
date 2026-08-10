@@ -117,6 +117,11 @@ non_diegetic_music: N/A"""
         with self.assertRaisesRegex(ValueError, "invented <Video 1>"):
             multimedia_reference.sanitize_h3_prompt(prompt, 1, 0, 1)
 
+        with self.assertRaisesRegex(ValueError, "missing <Picture 1>"):
+            multimedia_reference.sanitize_h3_prompt(
+                prompt.replace("<Picture 1>", "the image"), 1, 1, 1
+            )
+
     def test_h3_t2va_validation_accepts_direct_multi_shot_prompt(self):
         prompt = """Realistic live-action cinematic look in a quiet classroom.
 Scene overview: An eighteen-year-old university student prepares for class.
@@ -133,7 +138,7 @@ Audio: Quiet classroom ambience, paper rustle, and a subtle score."""
                 prompt + "\nsummary: [reference generation] invalid", 0, 0, 0
             )
 
-    def test_h3_i2va_requires_first_frame_picture_label(self):
+    def test_h3_i2va_repairs_missing_first_frame_picture_label(self):
         prompt = """Editorial cinematic film in the original scene from <Picture 1>.
 SHOT 1: The scene opens exactly on <Picture 1>; the subject begins to move.
 Audio: Natural room tone and soft fabric movement."""
@@ -142,16 +147,27 @@ Audio: Natural room tone and soft fabric movement."""
         )
         self.assertIn("<Picture 1>", result)
 
-        with self.assertRaisesRegex(ValueError, "missing <Picture 1>"):
+        repaired = multimedia_reference.sanitize_h3_prompt(
+            prompt.replace("<Picture 1>", "the input image"),
+            1,
+            0,
+            0,
+            h3_mode="I2VA",
+        )
+        self.assertIn(
+            "SHOT 1: The scene opens exactly on <Picture 1>;", repaired
+        )
+
+        with self.assertRaisesRegex(ValueError, "invented <Picture 2>"):
             multimedia_reference.sanitize_h3_prompt(
-                prompt.replace("<Picture 1>", "the input image"),
+                prompt.replace("<Picture 1>", "<Picture 2>"),
                 1,
                 0,
                 0,
                 h3_mode="I2VA",
             )
 
-    def test_h3_fl2va_requires_both_keyframe_picture_labels(self):
+    def test_h3_fl2va_repairs_missing_last_frame_picture_label(self):
         prompt = """Live-action cinematic film moving from <Picture 1> to <Picture 2>.
 SHOT 1: Open exactly on <Picture 1> and begin the continuous action.
 SHOT 2: Converge exactly to <Picture 2> as the action resolves.
@@ -161,14 +177,44 @@ Audio: Continuous room ambience and synchronized movement sounds."""
         )
         self.assertIn("<Picture 2>", result)
 
-        with self.assertRaisesRegex(ValueError, "missing <Picture 2>"):
-            multimedia_reference.sanitize_h3_prompt(
-                prompt.replace("<Picture 2>", "the final frame"),
-                2,
-                0,
-                0,
-                h3_mode="FL2VA",
-            )
+        repaired = multimedia_reference.sanitize_h3_prompt(
+            prompt.replace("<Picture 2>", "the final frame"),
+            2,
+            0,
+            0,
+            h3_mode="FL2VA",
+        )
+        self.assertIn(
+            "SHOT 2: The final shot lands exactly on <Picture 2> at the end.",
+            repaired,
+        )
+
+    def test_h3_l2va_repairs_missing_last_frame_picture_label(self):
+        prompt = """Live-action cinematic film resolving toward the supplied last frame.
+SHOT 1: The subject begins from a plausible earlier state.
+FINAL SHOT: The action settles into the final composition.
+Audio: Continuous ambience and synchronized movement sounds."""
+
+        repaired = multimedia_reference.sanitize_h3_prompt(
+            prompt, 1, 0, 0, h3_mode="L2VA"
+        )
+
+        self.assertIn(
+            "FINAL SHOT: The final shot converges exactly to <Picture 1> at the end.",
+            repaired,
+        )
+
+    def test_h3_fl2va_repairs_both_anchors_in_a_single_shot(self):
+        prompt = """Live-action cinematic film with continuous movement.
+SHOT 1: The subject completes one uninterrupted action.
+Audio: Continuous ambience and synchronized movement sounds."""
+
+        repaired = multimedia_reference.sanitize_h3_prompt(
+            prompt, 2, 0, 0, h3_mode="FL2VA"
+        )
+
+        self.assertIn("opens exactly on <Picture 1>", repaired)
+        self.assertIn("lands exactly on <Picture 2> at the end", repaired)
 
     def test_h3_base_strips_yaml_fence(self):
         prompt = """```yaml
@@ -214,6 +260,17 @@ Continuous ambience and synchronized movement sounds."""
         self.assertIn("[0s-2s] Shot 1:", result)
         self.assertIn("[2s-5s] Shot 2:", result)
         self.assertIn("Audio:\nContinuous ambience", result)
+
+    def test_h3_base_preserves_audio_visual_prose(self):
+        prompt = """Audio-visual cinematic language remains grounded and realistic.
+SHOT 1: The subject completes a restrained movement.
+Audio: Continuous room ambience."""
+
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 0, 0, 0, h3_mode="T2VA"
+        )
+
+        self.assertTrue(result.startswith("Audio-visual cinematic language"))
 
     def test_h3_ref2va_normalizes_markdown_section_headings(self):
         prompt = """**subject_definitions**: N/A

@@ -324,6 +324,7 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 - Base 直接输出自然分段生产提示词，不输出 YAML/JSON/Markdown 围栏，不使用 Context-IR 三核心字段。
 - Base 第一镜必须使用独立的纯文本 `SHOT 1:`，或 `[0.00s-2.00s] Shot 1:` 这类带时间段标题；镜头标题必须以 ASCII 冒号结束，不加粗、不加项目符号。
 - Base 声音段必须使用独立的纯文本 `Audio:` 标题，不翻译、不改名、不加 Markdown 装饰。
+- I2VA/L2VA 的正文必须逐字保留 `<Picture 1>`；FL2VA 必须逐字保留 `<Picture 1>` 与 `<Picture 2>`，不得改写成 `the image`、`the reference frame` 等代称。
 - Base 多镜头时间段必须覆盖完整时长；Ref2VA 字段名与六段顺序保持不变。
 - Base 与 Ref2VA 主结构禁止混用。
 - 忠实用户主体/动作/颜色/空间；不无故增加角色/动物/道具。  
