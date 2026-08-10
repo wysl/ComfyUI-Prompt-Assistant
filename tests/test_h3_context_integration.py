@@ -44,6 +44,7 @@ class H3ContextIntegrationTests(unittest.TestCase):
                 "videos": [video],
                 "audios": [audio],
                 "keyframe_roles": [],
+                "duration_seconds": 8.0,
             }
         )
 
@@ -56,6 +57,7 @@ class H3ContextIntegrationTests(unittest.TestCase):
         self.assertEqual(result.audios, (audio,))
         self.assertEqual(result.synchronized_audio_count, 0)
         self.assertEqual(result.synchronized_audio_video_indices, ())
+        self.assertEqual(result.duration_seconds, 8.0)
 
     def test_context_preserves_synchronized_audio_video_mapping(self):
         context = FakeH3Context(

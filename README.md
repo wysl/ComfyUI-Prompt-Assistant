@@ -25,6 +25,19 @@
 ## **📣更新**
 
 <details open>
+<summary><strong>[2026-08-10] 🔥当前开发版</strong></summary>
+
+**Changes:**
+* **H3 Base 官方流水线格式**：T2VA、I2VA、FL2VA、L2VA 改为自然英文生产提示词，支持按完整视频时长规划一个或多个 `SHOT`，统一以 `Audio:` 描述环境声、物理声、对白和音乐，不再强制输出 Context-IR 三核心字段。
+* **首尾帧引用与时长联动**：I2VA 使用 `<Picture 1>` 锚定真实首帧，FL2VA 使用 `<Picture 1>` 与 `<Picture 2>` 锚定首尾帧，L2VA 使用 `<Picture 1>` 锚定真实末帧；配套 MiniMax H3 Easy 会通过 `H3 Context` 传递准确视频秒数。
+* **Ref2VA 结构保持不变**：完整图片、视频、音频参考模式继续输出 `subject_definitions`、`summary`、`retention_analysis`、`detailed_description`、`overall_soundscape`、`non_diegetic_music` 六段式。
+
+**Fixes:**
+* **Base 输出校验更新**：接受官方自然分段与多镜头写法，校验 `SHOT 1`、`Audio:` 及实际 `<Picture N>` 锚点，自动清除包括 YAML 在内的 Markdown 代码围栏，并在格式错误时保留模型回复预览。
+
+</details>
+
+<details>
 <summary><strong>[2026-08-09] 🔥当前开发版</strong></summary>
 
 **Changes:**
@@ -339,7 +352,7 @@
 
 #### 🧩多媒体参考融合提示词
 
-`普通模式支持零张、单张或多张参考图：有手写描述或自备提示词参考时可纯文本生成。Storyboard Images 风格默认一次输出5段以 Next Scene: 开头、人物设定完整重复的独立静态分镜。选择 MiniMax H3 输出风格后，节点根据文字、首帧、末帧、首尾帧或完整多媒体参考自动选择 T2VA、I2VA、L2VA、FL2VA 或 Ref2VA，并输出对应的官方字段结构。`
+`普通模式支持零张、单张或多张参考图：有手写描述或自备提示词参考时可纯文本生成。Storyboard Images 风格默认一次输出5段以 Next Scene: 开头、人物设定完整重复的独立静态分镜。选择 MiniMax H3 输出风格后，节点根据文字、首帧、末帧、首尾帧或完整多媒体参考自动选择 T2VA、I2VA、L2VA、FL2VA 或 Ref2VA。Base 模式输出自然英文、多 SHOT 的 H3 生产提示词，Ref2VA 输出官方六段式。`
 
 
 #### 🔖标签、短语预设与收藏
@@ -411,7 +424,7 @@
 
 `多图输入可在融合描述中指定元素来源，例如“人物与装扮取自图1，环境取自图2”。Storyboard Images 会把这类图 N 指令提升为最高优先级元素绑定：只提取对应图片中被点名的类别，丢弃未指定类别，并将重组后的人物、服装与环境统一应用到所有分镜，而不是让一张参考图对应一个输出分镜。`
 
-`MiniMax H3 模式下，最终版 H3 规则作为内置输出风格自动应用，不再出现在“规则预设”列表；用户仍可选择任意内容预设。H3 Context 内无媒体时使用 T2VA；一张首帧或末帧分别使用 I2VA 或 L2VA；两张首尾帧使用 FL2VA，均输出 integrated_multimodal_description、overall_soundscape、non_diegetic_music 三核心。完整参考模式支持最多9张参考图、3段参考视频和3段参考音频，并输出 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式。未连接 H3 Context 时，可直接通过 images、videos、audios 端口提供 H3 媒体。`
+`MiniMax H3 模式下，最终版 H3 规则作为内置输出风格自动应用，不再出现在“规则预设”列表；用户仍可选择任意内容预设。H3 Context 内无媒体时使用 T2VA；一张首帧或末帧分别使用 I2VA 或 L2VA；两张首尾帧使用 FL2VA。这四种 Base 模式输出自然英文生产提示词，可按完整视频时长使用一个或多个 SHOT，并以 Audio: 汇总声音设计；I2VA/FL2VA/L2VA 使用对应的 <Picture N> 锚点。完整参考模式支持最多9张参考图、3段参考视频和3段参考音频，并输出 subject_definitions、summary、retention_analysis、detailed_description、overall_soundscape、non_diegetic_music 六段式。未连接 H3 Context 时，可直接通过 images、videos、audios 端口提供 H3 媒体。`
 
 `安装配套版本的 ComfyUI-MiniMaxH3-Easy 后，可把 Easy 主节点的 H3 Context 同时连接到本节点和 Easy Output。本节点会自动读取原提示词、模式与 H3 媒体：纯文本使用 T2VA，单首帧/单末帧使用 I2VA/L2VA，首尾帧使用 FL2VA，完整参考模式使用 Ref2VA。额外接入本节点 images 端口的图像批次只用于提取用户指定的人物、装扮、环境等元素，不计入 H3 媒体，也不会改变模式；额外视频或音频仍应连接到 Easy 节点。再把“融合提示词”输出连接到 Easy Output 的“优化后的提示词”，即可重新编码 Conditioning。`
 

@@ -42,6 +42,7 @@ class H3ContextInputs:
     synchronized_audio_count: int
     synchronized_audio_video_indices: Tuple[int, ...]
     keyframe_roles: Tuple[str, ...]
+    duration_seconds: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ def extract_h3_context_inputs(value: Any) -> Optional[H3ContextInputs]:
     except (TypeError, ValueError):
         raise ValueError("The H3 Context returned invalid synchronized audio metadata.")
     roles = tuple(str(role) for role in iter_input_values(payload.get("keyframe_roles")))
+    duration_seconds = _positive_float(payload.get("duration_seconds"))
     try:
         synchronized_audio_video_indices = tuple(
             int(index)
@@ -105,6 +107,7 @@ def extract_h3_context_inputs(value: Any) -> Optional[H3ContextInputs]:
     return H3ContextInputs(
         mode=mode,
         prompt=str(payload.get("prompt") or ""),
+        duration_seconds=duration_seconds,
         images=images,
         videos=videos,
         audios=audios,
@@ -407,12 +410,20 @@ def build_h3_reference_manifest(
 
 
 def sanitize_h3_prompt(
-    prompt: str, image_count: int, video_count: int, audio_count: int
+    prompt: str,
+    image_count: int,
+    video_count: int,
+    audio_count: int,
+    h3_mode: Optional[str] = None,
 ) -> str:
-    """Validate the H3 T2VA or Ref2VA structure and media labels."""
+    """Validate a direct H3 Base prompt or a structured Ref2VA prompt."""
     text = (prompt or "").strip()
-    text = re.sub(r"^```(?:text|markdown)?\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^```[a-z0-9_-]*\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
+    mode = str(h3_mode or "").upper()
+    if not mode:
+        mode = "T2VA" if image_count == 0 and video_count == 0 and audio_count == 0 else "REF2VA"
+    is_base_mode = mode in {"T2VA", "I2VA", "FL2VA", "L2VA"}
     known_sections = (
         "subject_definitions",
         "summary",
@@ -436,14 +447,9 @@ def sanitize_h3_prompt(
         text = decorated_with_colon.sub(f"{section}: ", text)
         text = markdown_heading.sub(f"{section}:", text)
 
-    is_t2va = image_count == 0 and video_count == 0 and audio_count == 0
     required = (
-        (
-            "integrated_multimodal_description:",
-            "overall_soundscape:",
-            "non_diegetic_music:",
-        )
-        if is_t2va
+        ()
+        if is_base_mode
         else (
             "subject_definitions:",
             "summary:",
@@ -454,9 +460,9 @@ def sanitize_h3_prompt(
         )
     )
     lowered = text.lower()
+    response_preview = re.sub(r"\s+", " ", text).strip()[:240]
     missing = [section for section in required if section not in lowered]
     if missing:
-        response_preview = re.sub(r"\s+", " ", text).strip()[:240]
         raise ValueError(
             "MiniMax H3 output is missing required sections: "
             + ", ".join(missing)
@@ -467,12 +473,15 @@ def sanitize_h3_prompt(
             )
         )
 
-    if is_t2va:
+    if is_base_mode:
         forbidden_fields = (
             "subject_definitions",
             "summary",
             "retention_analysis",
             "detailed_description",
+            "integrated_multimodal_description",
+            "overall_soundscape",
+            "non_diegetic_music",
         )
         found_forbidden = [
             field
@@ -482,8 +491,26 @@ def sanitize_h3_prompt(
         if found_forbidden or re.search(r"<Subject\s+\d+>", text, flags=re.IGNORECASE):
             details = found_forbidden or ["<Subject N>"]
             raise ValueError(
-                "MiniMax H3 T2VA output contains Ref2VA-only fields: "
+                "MiniMax H3 Base output contains Context-IR/Ref2VA fields: "
                 + ", ".join(details)
+            )
+        if not re.search(r"(?im)^\s*(?:\[[^\]]+\]\s*)?shot\s*1\s*:", text):
+            raise ValueError(
+                "MiniMax H3 Base output must contain a SHOT 1 section"
+                + (
+                    f". Model response preview: {response_preview}"
+                    if response_preview
+                    else ""
+                )
+            )
+        if not re.search(r"(?im)^\s*audio\s*:", text):
+            raise ValueError(
+                "MiniMax H3 Base output must contain an Audio section"
+                + (
+                    f". Model response preview: {response_preview}"
+                    if response_preview
+                    else ""
+                )
             )
 
     missing_labels: List[str] = []

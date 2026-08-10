@@ -117,27 +117,90 @@ non_diegetic_music: N/A"""
         with self.assertRaisesRegex(ValueError, "invented <Video 1>"):
             multimedia_reference.sanitize_h3_prompt(prompt, 1, 0, 1)
 
-    def test_h3_t2va_validation_uses_three_core_fields(self):
-        prompt = """integrated_multimodal_description: [Shot 1] A close-up portrait moves naturally.
-overall_soundscape: Quiet room tone.
-non_diegetic_music: N/A"""
+    def test_h3_t2va_validation_accepts_direct_multi_shot_prompt(self):
+        prompt = """Realistic live-action cinematic look in a quiet classroom.
+Scene overview: An eighteen-year-old university student prepares for class.
+[0s-2s] Shot 1: She opens her notebook and looks toward the window.
+[2s-5s] Shot 2: Cut to a medium close-up as she turns back and smiles.
+Camera: Clean hard cut, restrained handheld motion.
+Audio: Quiet classroom ambience, paper rustle, and a subtle score."""
         result = multimedia_reference.sanitize_h3_prompt(prompt, 0, 0, 0)
-        self.assertIn("integrated_multimodal_description:", result)
+        self.assertIn("[0s-2s] Shot 1:", result)
+        self.assertIn("Audio:", result)
 
-        with self.assertRaisesRegex(ValueError, "Ref2VA-only fields"):
+        with self.assertRaisesRegex(ValueError, "Context-IR/Ref2VA fields"):
             multimedia_reference.sanitize_h3_prompt(
                 prompt + "\nsummary: [reference generation] invalid", 0, 0, 0
             )
 
-    def test_h3_validation_normalizes_markdown_section_headings(self):
-        prompt = """**integrated_multimodal_description**: [Shot 1] A student enters a classroom.
+    def test_h3_i2va_requires_first_frame_picture_label(self):
+        prompt = """Editorial cinematic film in the original scene from <Picture 1>.
+SHOT 1: The scene opens exactly on <Picture 1>; the subject begins to move.
+Audio: Natural room tone and soft fabric movement."""
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 1, 0, 0, h3_mode="I2VA"
+        )
+        self.assertIn("<Picture 1>", result)
+
+        with self.assertRaisesRegex(ValueError, "missing <Picture 1>"):
+            multimedia_reference.sanitize_h3_prompt(
+                prompt.replace("<Picture 1>", "the input image"),
+                1,
+                0,
+                0,
+                h3_mode="I2VA",
+            )
+
+    def test_h3_fl2va_requires_both_keyframe_picture_labels(self):
+        prompt = """Live-action cinematic film moving from <Picture 1> to <Picture 2>.
+SHOT 1: Open exactly on <Picture 1> and begin the continuous action.
+SHOT 2: Converge exactly to <Picture 2> as the action resolves.
+Audio: Continuous room ambience and synchronized movement sounds."""
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 2, 0, 0, h3_mode="FL2VA"
+        )
+        self.assertIn("<Picture 2>", result)
+
+        with self.assertRaisesRegex(ValueError, "missing <Picture 2>"):
+            multimedia_reference.sanitize_h3_prompt(
+                prompt.replace("<Picture 2>", "the final frame"),
+                2,
+                0,
+                0,
+                h3_mode="FL2VA",
+            )
+
+    def test_h3_base_strips_yaml_fence(self):
+        prompt = """```yaml
+Realistic live-action cinematic look.
+SHOT 1: A student enters a quiet classroom.
+Audio: Quiet classroom ambience.
+```"""
+
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 0, 0, 0, h3_mode="T2VA"
+        )
+
+        self.assertFalse(result.startswith("```"))
+        self.assertFalse(result.endswith("```"))
+
+    def test_h3_ref2va_normalizes_markdown_section_headings(self):
+        prompt = """**subject_definitions**: N/A
+### summary
+[reference generation] A student enters a classroom.
+`retention_analysis`： N/A
+**detailed_description**: [Shot 1] A student enters a classroom.
 ### overall_soundscape
 Quiet classroom ambience.
 `non_diegetic_music`： N/A"""
 
-        result = multimedia_reference.sanitize_h3_prompt(prompt, 0, 0, 0)
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 0, 0, 0, h3_mode="Ref2VA"
+        )
 
-        self.assertIn("integrated_multimodal_description: [Shot 1]", result)
+        self.assertIn("subject_definitions: N/A", result)
+        self.assertIn("summary:\n[reference generation]", result)
+        self.assertIn("detailed_description: [Shot 1]", result)
         self.assertIn("overall_soundscape:\nQuiet classroom ambience.", result)
         self.assertIn("non_diegetic_music: N/A", result)
 

@@ -5,6 +5,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import tempfile
+from typing import Optional
 import unittest
 
 
@@ -55,6 +56,7 @@ def load_prompt_builder_class():
         "H3_BASE_KEYFRAME_RULE": "BASE H3 KEYFRAME RULE",
         "STORYBOARD_OUTPUT_STYLE": "Storyboard Images",
         "List": list,
+        "Optional": Optional,
         "Tuple": tuple,
         "re": __import__("re"),
     }
@@ -188,7 +190,7 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("<Audio 1>: synchronized audio track of <Video 2>", prompt)
         self.assertIn("<Audio 2>: standalone reference audio 1", prompt)
 
-    def test_h3_base_keyframes_use_three_core_prompt_contract(self):
+    def test_h3_base_keyframes_use_direct_multi_shot_prompt_contract(self):
         prompt = self.builder._build_h3_prompt(
             rule_content="SELECTED H3 RULE",
             output_style_rule="OFFICIAL H3 OUTPUT STYLE",
@@ -201,16 +203,20 @@ class ReferencePromptBuilderTests(unittest.TestCase):
                 "VLM Image 2 => last-frame visual anchor",
             ],
             base_mode=True,
+            h3_mode="FL2VA",
+            duration_seconds=5.0,
             keyframe_roles=("first", "last"),
         )
         self.assertIn("BASE H3 KEYFRAME RULE", prompt)
         self.assertIn("MOVE BETWEEN KEYFRAMES", prompt)
         self.assertIn("first-frame visual anchor", prompt)
         self.assertIn("last-frame visual anchor", prompt)
-        self.assertNotIn("<Picture 1>", prompt)
-        self.assertIn("Use these exact ASCII field headers", prompt)
-        self.assertIn("integrated_multimodal_description:", prompt)
-        self.assertIn("Do not decorate the field headers with Markdown", prompt)
+        self.assertIn("<Picture 1>", prompt)
+        self.assertIn("<Picture 2>", prompt)
+        self.assertIn("direct H3 Base output contract for FL2VA", prompt)
+        self.assertIn("Target duration: 5.00 seconds", prompt)
+        self.assertIn("Multiple SHOT sections are allowed", prompt)
+        self.assertNotIn("Use these exact ASCII field headers", prompt)
 
     def test_h3_analysis_images_do_not_change_t2va_output_contract(self):
         prompt = self.builder._build_h3_prompt(
@@ -233,7 +239,8 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("Analysis-only visual references", prompt)
         self.assertIn("must not change the H3 generation mode", prompt)
         self.assertIn("not H3 keyframes or Ref2VA media", prompt)
-        self.assertIn("integrated_multimodal_description:", prompt)
+        self.assertIn("direct H3 Base output contract for T2VA", prompt)
+        self.assertIn("Do not emit any <Picture N> label", prompt)
         self.assertNotIn("subject_definitions:\n", prompt)
 
     def test_h3_mode_resolution_distinguishes_base_keyframe_roles(self):

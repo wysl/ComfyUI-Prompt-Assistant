@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from comfy.model_management import InterruptProcessingException
@@ -84,19 +84,18 @@ audio speech, lyrics, or sound content that the user did not describe."""
 
 
 H3_T2V_RULE = """[Execution mode: T2VA]
-No image, video, or audio reference is present. Follow the T2VA three-core
-structure from the MiniMax H3 output style: integrated_multimodal_description,
-overall_soundscape, then non_diegetic_music. Do not emit any Picture, Video,
-Audio, Subject, summary, retention_analysis, or detailed_description field."""
+No H3 keyframe or full-reference media is present. Write a direct H3 Base
+production prompt with a visual style opening, a scene overview when useful,
+one or more timed SHOT sections, camera direction, and an Audio section.
+Do not invent Picture, Video, Audio, or Subject reference labels."""
 
 
 H3_BASE_KEYFRAME_RULE = """[Execution mode: H3 Base keyframe mode]
 One or two keyframe images are present. Use them as first/last-frame visual
-anchors and follow the MiniMax H3 Base three-core structure:
-integrated_multimodal_description, overall_soundscape, then
-non_diegetic_music. Do not emit Picture, Video, Audio, Subject, summary,
-retention_analysis, or detailed_description fields, and do not label the
-keyframes as <Picture N>."""
+anchors in a direct H3 Base production prompt. Multiple SHOT sections and hard
+cuts are allowed when they serve the requested sequence. Use the supplied
+<Picture N> labels exactly as mapped, preserve the referenced appearance and
+environment, and describe observable motion between keyframes."""
 
 
 STORYBOARD_OUTPUT_STYLE = "Storyboard Images"
@@ -567,6 +566,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
         reference_prompt_content: str = "",
         base_mode: bool = False,
         h3_mode: str = "T2VA",
+        duration_seconds: Optional[float] = None,
         keyframe_roles: Tuple[str, ...] = (),
         synchronized_audio_video_indices: Tuple[int, ...] = (),
     ) -> str:
@@ -598,15 +598,42 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 "final prompt. Do not copy unrelated content from them.\n"
                 f"{chr(10).join(analysis_payload_labels)}\n\n"
             )
+        duration_label = (
+            f"{float(duration_seconds):.2f} seconds"
+            if duration_seconds is not None
+            else "the requested duration"
+        )
+        base_mode_contracts = {
+            "T2VA": (
+                "Do not emit any <Picture N> label. Build the complete audiovisual "
+                "timeline from text."
+            ),
+            "I2VA": (
+                "Use <Picture 1> as the true first frame. SHOT 1 must open exactly on "
+                "<Picture 1>, then develop forward without replaying its existing pose."
+            ),
+            "FL2VA": (
+                "Use <Picture 1> as the true first frame and <Picture 2> as the true last "
+                "frame. Describe the continuous intermediate path; the final SHOT must "
+                "land exactly on <Picture 2>."
+            ),
+            "L2VA": (
+                "Use <Picture 1> as the true last frame. Infer a plausible opening and "
+                "make the final SHOT converge exactly to <Picture 1>."
+            ),
+        }
         base_output_contract = (
-            "[Mandatory final output contract]\n"
-            "Use these exact ASCII field headers in this exact order:\n"
-            "integrated_multimodal_description:\n"
-            "overall_soundscape:\n"
-            "non_diegetic_music:\n"
-            "Do not decorate the field headers with Markdown. "
-            "Do not translate, rename, or omit them. "
-            "Do not add explanations before or after the structured prompt."
+            f"[Mandatory direct H3 Base output contract for {h3_mode}]\n"
+            f"Target duration: {duration_label}.\n"
+            "Return only a natural English production prompt ready for H3 Base. "
+            "Do not output YAML, JSON, Markdown fences, explanations, or the Context-IR "
+            "field names integrated_multimodal_description, overall_soundscape, or "
+            "non_diegetic_music. Multiple SHOT sections are allowed. Start with the "
+            "visual style and stable environment, then write SHOT 1 and any later SHOTs "
+            "in chronological order. Timed ranges must cover the target duration without "
+            "overlap or gaps. End with an Audio: section covering ambience, physical "
+            "sounds, dialogue, and music, followed by concise visual exclusions when useful.\n"
+            f"{base_mode_contracts.get(h3_mode, base_mode_contracts['T2VA'])}"
         )
         ref_output_contract = (
             "[Mandatory final output contract]\n"
@@ -631,7 +658,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     "first" if index == 0 else "last" for index in range(image_count)
                 )
                 keyframe_lines = "\n".join(
-                    f"- VLM Image {index}: {role}-frame visual anchor"
+                    f"- VLM Image {index} => <Picture {index}>: {role}-frame visual anchor"
                     for index, role in enumerate(roles, 1)
                 )
                 keyframe_block = (
@@ -641,7 +668,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 runtime_rule = H3_BASE_KEYFRAME_RULE
                 final_instruction = (
                     f"Create one coherent {h3_mode} prompt anchored to the supplied keyframes. "
-                    "Describe continuous motion between them without emitting reference labels."
+                    "Use the mapped <Picture N> labels and allow multiple SHOT sections when useful."
                 )
             else:
                 keyframe_block = ""
@@ -829,6 +856,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             seed = unwrap_scalar(seed, 0)
 
             h3_base_mode = False
+            duration_seconds: Optional[float] = None
             keyframe_roles: Tuple[str, ...] = ()
             synchronized_audio_count = 0
             synchronized_audio_video_indices: Tuple[int, ...] = ()
@@ -846,6 +874,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     fusion_description = context_inputs.prompt.strip()
                 output_style = H3_OUTPUT_STYLE
                 h3_base_mode = context_inputs.mode == "image"
+                duration_seconds = context_inputs.duration_seconds
                 keyframe_roles = context_inputs.keyframe_roles
                 synchronized_audio_count = context_inputs.synchronized_audio_count
                 synchronized_audio_video_indices = context_inputs.synchronized_audio_video_indices
@@ -1045,6 +1074,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                     reference_prompt_content=reference_prompt_content,
                     base_mode=is_h3_base,
                     h3_mode=mode_name,
+                    duration_seconds=duration_seconds,
                     keyframe_roles=keyframe_roles,
                     synchronized_audio_video_indices=synchronized_audio_video_indices,
                 )
@@ -1154,9 +1184,10 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 if is_h3:
                     fusion_prompt = sanitize_h3_prompt(
                         fusion_prompt,
-                        image_count=0 if is_h3_base else len(image_frames),
-                        video_count=0 if is_h3_base else len(videos),
-                        audio_count=0 if is_h3_base else len(audios),
+                        image_count=len(image_frames),
+                        video_count=len(videos),
+                        audio_count=len(audios),
+                        h3_mode=mode_name,
                     )
                 elif is_storyboard:
                     fusion_prompt = cls._sanitize_storyboard_prompt(fusion_prompt)

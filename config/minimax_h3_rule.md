@@ -94,10 +94,10 @@
 | 优先级 | 触发（命中其一） | 模式 | 输出结构 |
 | --- | --- | --- | --- |
 | 1 | 有参考**视频**或**音频**（+ 图/视频）；`参考视频` `剪辑` `续写` `复刻` `替换` `延续` `音色参考` `声音参考`；**多图作角色/风格参考但非首尾时间锚** | **Full-Reference（Ref2VA）** | 六段式 |
-| 2 | `首末帧` `首尾帧` `首尾图` `开头和结尾` + **两张图明确作时间轴首/尾** | **FL2VA** | FL 指令 + 三核心 |
-| 3 | `末帧` `以图结尾` `结局图` | **L2VA** | L2 指令 + 三核心 |
-| 4 | `首帧` `以图开头` `单图开头` `参考图开始` | **I2VA** | I2 指令 + 三核心 |
-| 5 | `纯文字` `无图` `文生视频` `文字生视频` / 以上不命中 | **T2VA** | 仅三核心（无指令行） |
+| 2 | `首末帧` `首尾帧` `首尾图` `开头和结尾` + **两张图明确作时间轴首/尾** | **FL2VA** | H3 Base 自然分段提示词 |
+| 3 | `末帧` `以图结尾` `结局图` | **L2VA** | H3 Base 自然分段提示词 |
+| 4 | `首帧` `以图开头` `单图开头` `参考图开始` | **I2VA** | H3 Base 自然分段提示词 |
+| 5 | `纯文字` `无图` `文生视频` `文字生视频` / 以上不命中 | **T2VA** | H3 Base 自然分段提示词 |
 
 ### 2.2 伪代码
 
@@ -146,63 +146,68 @@ else:
 ### 3.1 T2VA（文生视频）
 
 ```text
-integrated_multimodal_description: [Shot 1] ...
+Realistic live-action cinematic look, ...
 
-overall_soundscape: ...
+Scene overview: ...
 
-non_diegetic_music: ...
+Storyboard (each shot a separate scene, cuts follow the requested rhythm):
+[0s-1.5s] Shot 1: ...
+[1.5s-3s] Shot 2: ...
+
+Camera: ...
+
+Audio: ...
+
+No text, subtitles, logos or watermarks, ...
 ```
 
-- 无指令行。  
-- 从文本构建完整时间线；可在意图内补合理细节。  
+- 从文本构建完整视听时间线；可在意图内补合理细节。
+- 允许单 Shot 或多个 Shot；需要切镜时按时长写连续、不重叠、不留空档的时间段。
 - **景别遵守 §〇**：优先 close-up / medium close-up / medium shot。
 
 ### 3.2 I2VA（首帧生视频）
 
 ```text
-For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
+Editorial cinematic film. The subject and original scene from <Picture 1> remain visually consistent throughout. ...
 
-integrated_multimodal_description: [Shot 1] 先锚定图中风格/主体/构图/服装/空间，再写后续动作；后续镜写 continuing / already / without repeating ...
+SHOT 1: The scene opens exactly on <Picture 1>; ...
+SHOT 2: Cut to ...; continuing from the prior completed state without replaying the action.
 
-overall_soundscape: ...
-
-non_diegetic_music: ...
+Audio: ...
 ```
 
-- `<Picture 1>` = **0.00s 真实首帧**，属 **`[Shot 1]`**。  
+- `<Picture 1>` = **0.00s 真实首帧**；SHOT 1 必须明确 `opens exactly on <Picture 1>`。
 - 路径：**首帧锚定 → 新动作起势 → 连续发展 → 结果**（不重做已在图中完成的状态）。  
-- 身份/服装/颜色/关键物/空间一致。
+- 身份/服装/颜色/关键物/空间一致；允许多个 SHOT。
 
 ### 3.3 FL2VA（首尾帧生视频）
 
 ```text
-How the reference pictures align with the target video — Picture 1 (from Shot 1) aligns with the 0.00-second mark of the target video; Picture 2 (from Shot N) aligns with the S.SS-second mark of the target video.
+Live-action cinematic film. <Picture 1> is the exact opening frame and <Picture 2> is the exact final frame. ...
 
-integrated_multimodal_description: [Shot 1] 写首帧→末帧的连续路径（默认单镜头）...
+SHOT 1: Open exactly on <Picture 1>; begin the first observable change ...
+SHOT 2: Continue the same action direction and camera continuity ...
+FINAL SHOT: Progressively converge to the pose, object state, lighting, framing, and composition of <Picture 2>, landing exactly on <Picture 2> at the end.
 
-overall_soundscape: ...
-
-non_diegetic_music: ...
+Audio: ...
 ```
 
-- `S.SS` 两位小数；`N` 为最终镜头号。  
 - **写运动路径**，禁止两段静态「看图说话」。  
-- **默认单镜头**；多镜仅用户明确要求，且须遵守 §〇.2 / §〇.3。  
+- 可用单镜头或多个 SHOT；多镜时必须遵守 §〇.2 / §〇.3。
 - 路径：**首态 → 中间可观察变化 → 收束 → 末态**。
 
 ### 3.4 L2VA（末帧生视频）
 
 ```text
-How the reference pictures align with the target video — <Picture 1> (from [Shot N]) aligns with the S.SS-second mark of the target video.
+Live-action cinematic film. <Picture 1> is the exact final frame. ...
 
-integrated_multimodal_description: [Shot 1] 合理前态 → 过渡 → 终镜收敛到末帧 ...
+SHOT 1: Begin from a plausible earlier state compatible with <Picture 1>; ...
+FINAL SHOT: Converge exactly to <Picture 1> at the end without overshooting or changing its final composition.
 
-overall_soundscape: ...
-
-non_diegetic_music: ...
+Audio: ...
 ```
 
-- 图属 **`[Shot N]`**，**不是**默认 Shot 1。
+- `<Picture 1>` 只锚定最终画面，不代表 SHOT 1 的初始状态。
 
 ### 3.5 Full-Reference / Ref2VA（多图 · 多媒体）
 
@@ -253,12 +258,12 @@ non_diegetic_music:
 
 ---
 
-## 四、多模态描述写作细则
+## 四、H3 Base 与 Ref2VA 写作细则
 
 ### 4.1 镜头与剪切
 
-- `[Shot 1]`：**风格 + 景别（特写/近景/中近景）+ 构图 + 方向锚（如有运动）**；**无时间戳**。  
-- 后续：`[Shot 2] At 00:03.500, the camera cuts to ...`（时间严格递增、落在时长内）。  
+- Base 可用 `SHOT 1:` / `SHOT 2:`，或 `[0s-1.5s] Shot 1:` 形式；Ref2VA 保留 `[Shot 1]` / `[Shot 2] At 00:03.500`。
+- Base 时间段严格递增、互不重叠、覆盖完整目标时长；不需要切镜时可只写一个 SHOT。
 - 剪切用语：`the camera cuts to` / `the shot cuts to` / `the shot transitions to` / `the shot changes to` / `the shot switches to`。  
 - `cross-dissolve` / `fade` / `wipe` 仅用户明确要求。  
 - **剪切必须引入新信息**；且**新信息 ≠ 重做旧动作**（§〇.2）。  
@@ -297,9 +302,10 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 
 | 层 | 字段 | 规则 |
 | --- | --- | --- |
-| 剧情音（对白/唱/角色能听到的乐） | 主描述 / `detailed_description` | 挂到具体镜头 |
-| 环境 + 物理 + 非语言人声 | `overall_soundscape` | 1–4 句；全静默才 `N/A` |
-| 观众 BGM | `non_diegetic_music` | 1–3 句；乐器/速度/节奏/动态；**禁抽象情绪词**；无则 `N/A` |
+| Base 全部音频 | `Audio:` | 环境、物理声、对白、音乐与节拍点；无则明确写 silence |
+| Ref 剧情音（对白/唱/角色能听到的乐） | `detailed_description` | 挂到具体镜头 |
+| Ref 环境 + 物理 + 非语言人声 | `overall_soundscape` | 1–4 句；全静默才 `N/A` |
+| Ref 观众 BGM | `non_diegetic_music` | 1–3 句；乐器/速度/节奏/动态；**禁抽象情绪词**；无则 `N/A` |
 
 ### 4.6 动作与方向（摘要，详见 §〇）
 
@@ -315,8 +321,9 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 ## 五、输出语言与格式
 
 - 正文英文；`<d>` 与画面字保留原文。  
-- 时长 `S.SS` 两位小数。  
-- 字段之间空行；字段名与官方一致，**base 与 Ref 主字段名禁止混用**。  
+- Base 直接输出自然分段生产提示词，不输出 YAML/JSON/Markdown 围栏，不使用 Context-IR 三核心字段。
+- Base 多镜头时间段必须覆盖完整时长；Ref2VA 字段名与六段顺序保持不变。
+- Base 与 Ref2VA 主结构禁止混用。
 - 忠实用户主体/动作/颜色/空间；不无故增加角色/动物/道具。  
 - 可在不偏离意图下补全缺失的连续动作与方向句（为压制 §〇 缺陷所必需的补全优先写入）。
 
@@ -341,10 +348,11 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 
 ```text
 [ ] 模式判定正确（含多图 vs 首尾帧校准）
-[ ] 指令行（若需要）在第一行且原文正确
-[ ] 字段名与顺序正确（三核心 or 六段）
-[ ] I2VA 图 ∈ Shot 1；L2VA 图 ∈ Shot N
-[ ] 仅 Ref 使用 summary / retention / 参考标签
+[ ] Base 使用自然分段生产提示词；Ref2VA 使用六段式
+[ ] Base 至少包含 SHOT 1 与 Audio；多镜时间段覆盖完整时长且无重叠/空档
+[ ] I2VA 的 SHOT 1 从 <Picture 1> 精确起步
+[ ] FL2VA 从 <Picture 1> 运动到 <Picture 2>；L2VA 最终收敛到 <Picture 1>
+[ ] 仅 Ref 使用 summary / retention / Subject / Video / Audio 参考标签
 ```
 
 ### 7.2 模型缺陷（§〇）
@@ -359,16 +367,16 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 ### 7.3 声音与对白
 
 ```text
-[ ] soundscape / music 无重复对白歌词
+[ ] Base 的 Audio 或 Ref 的 soundscape / music 无重复对白歌词
 [ ] <d> 原文未译改
 [ ] 运镜为自然句非标签堆
-[ ] 首镜无时间戳；后镜时间递增
+[ ] Base 时间段连续；Ref 首镜无时间戳、后镜时间递增
 ```
 
 ### 7.4 反推清单（从成品回溯）
 
 ```text
-[ ] 凭指令行/六段能否唯一确定模式？
+[ ] 凭 Picture 锚定方式/六段能否唯一确定模式？
 [ ] 凭每镜动词表能否证明无跨镜复读？
 [ ] 凭方向句能否证明无反向跳变？
 [ ] 凭景别词能否证明无远景脸？
@@ -380,7 +388,7 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 
 1. I2VA ≠ L2VA 图所属 Shot。  
 2. 非 Ref 模式禁止 summary / retention / Subject 标签当主结构。  
-3. `integrated_multimodal_description`（base）≠ `detailed_description`（Ref）。  
+3. Base 自然生产提示词 ≠ Ref 的 `detailed_description` 六段式。
 4. 「两张图」≠ 自动 FL2VA；先看是否时间首尾锚。  
 5. 「风格参考」无媒体 ≠ Full-Reference。  
 6. 切镜「新信息」不等于「从头再演一遍」。  
@@ -389,17 +397,16 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 
 ---
 
-## 九、附录：字段速查
+## 九、附录：结构速查
 
-| 模式 | 主描述字段 | 指令行 |
+| 模式 | 输出结构 | 关键锚定 |
 | --- | --- | --- |
-| T2VA | `integrated_multimodal_description` | 无 |
-| I2VA | 同上 | `For the target video, at 0.00 seconds... fully referenced.` |
-| FL2VA | 同上 | `How the reference pictures align... 0.00 ... S.SS...` |
-| L2VA | 同上 | `How the reference pictures align... Shot N ... S.SS...` |
-| Ref2VA | `detailed_description` | 无；改用六段 |
+| T2VA | 自然分段 H3 Base 提示词 | 无 Picture 标签 |
+| I2VA | 自然分段 H3 Base 提示词 | SHOT 1 精确打开在 `<Picture 1>` |
+| FL2VA | 自然分段 H3 Base 提示词 | `<Picture 1>` 首帧 → `<Picture 2>` 末帧 |
+| L2VA | 自然分段 H3 Base 提示词 | 最终 SHOT 精确收敛到 `<Picture 1>` |
+| Ref2VA | 六段式 | 使用 Subject / Picture / Video / Audio 标签 |
 
-**三核心顺序**：`integrated_multimodal_description` → `overall_soundscape` → `non_diegetic_music`  
 **六段顺序**：`subject_definitions` → `summary` → `retention_analysis` → `detailed_description` → `overall_soundscape` → `non_diegetic_music`
 
 ---
@@ -408,7 +415,7 @@ The camera pushes in with small amplitude at slow speed (staying in close-up, ne
 
 | 项 | 内容 |
 | --- | --- |
-| 版本 | 最终优化版 v1 |
+| 版本 | H3 Base 多 Shot 版 v2 |
 | 相对「提示词优化规则」原稿 | 并入官方细节（输入上限、叙事路径、标签细则、词数）+ **§〇 模型缺陷三件套** |
 | 相对「整合与对比」文 | 收束为可直接挂载 AGENTS / skill 的执行文档 |
 | §〇 三条来源 | ① 远处崩脸 → 禁远景/大远景，优先特写近景中近景，禁切镜复读动作 ② 切镜动作重置 ③ 切镜运动方向反转（如下↔上） |

@@ -273,7 +273,7 @@
             },
             "output_style": {
                 "name": "輸出風格",
-                "tooltip": "一般融合風格；MiniMax H3 在無媒體時使用 T2V，有媒體時使用 Ref2VA"
+                "tooltip": "Storyboard Images 預設輸出5段單行靜態分鏡；MiniMax H3 的 T2VA、I2VA、FL2VA、L2VA 輸出自然英文、多 SHOT 的 H3 Base 提示詞，Ref2VA 輸出六段式"
             },
             "video_frames_per_ref": {
                 "name": "每段影片抽幀數",
