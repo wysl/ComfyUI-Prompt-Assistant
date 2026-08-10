@@ -184,6 +184,37 @@ Audio: Quiet classroom ambience.
         self.assertFalse(result.startswith("```"))
         self.assertFalse(result.endswith("```"))
 
+    def test_h3_base_normalizes_markdown_decorated_required_headings(self):
+        prompt = """**Editorial cinematic film in the original scene from <Picture 1>.**
+**SHOT 1:** The scene opens exactly on <Picture 1> and develops forward.
+**Audio:** Natural room tone and soft fabric movement."""
+
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 1, 0, 0, h3_mode="I2VA"
+        )
+
+        self.assertIn("\nSHOT 1: The scene opens", result)
+        self.assertIn("\nAudio: Natural room tone", result)
+        self.assertNotIn("**SHOT 1:**", result)
+        self.assertNotIn("**Audio:**", result)
+
+    def test_h3_base_normalizes_parenthesized_timing_and_heading_markers(self):
+        prompt = """Realistic live-action cinematic look.
+### Shot 1 (0s-2s)
+The subject begins moving.
+### Shot 2 (2s-5s)
+The action resolves.
+### Audio
+Continuous ambience and synchronized movement sounds."""
+
+        result = multimedia_reference.sanitize_h3_prompt(
+            prompt, 0, 0, 0, h3_mode="T2VA"
+        )
+
+        self.assertIn("[0s-2s] Shot 1:", result)
+        self.assertIn("[2s-5s] Shot 2:", result)
+        self.assertIn("Audio:\nContinuous ambience", result)
+
     def test_h3_ref2va_normalizes_markdown_section_headings(self):
         prompt = """**subject_definitions**: N/A
 ### summary

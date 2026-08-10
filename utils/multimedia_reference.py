@@ -409,6 +409,54 @@ def build_h3_reference_manifest(
     return "\n".join(lines)
 
 
+def _normalize_h3_base_headings(text: str) -> str:
+    """Normalize harmless model formatting around required Base headings."""
+    shot_prefix = (
+        r"(?im)^[ \t]*(?:#{1,6}[ \t]+)?(?:[-+*][ \t]+)?"
+        r"(?:\*\*|__|`)?[ \t]*"
+        r"(?:(?P<range>\[[^\]\r\n]+\])[ \t]*)?"
+        r"(?:\*\*|__|`)?[ \t]*shot[ \t]+(?P<number>\d+)"
+        r"(?:[ \t]*\((?P<paren>[^)\r\n]+)\))?"
+    )
+
+    def replace_shot(match: re.Match[str]) -> str:
+        time_range = match.group("range")
+        if not time_range and match.group("paren"):
+            time_range = f"[{match.group('paren').strip()}]"
+        number = match.group("number")
+        return f"{time_range} Shot {number}: " if time_range else f"SHOT {number}: "
+
+    text = re.sub(
+        shot_prefix
+        + r"[ \t]*(?:\*\*|__|`)?[ \t]*(?:[:：]|[-–—])[ \t]*"
+        r"(?:\*\*|__|`)?[ \t]*",
+        replace_shot,
+        text,
+    )
+    text = re.sub(
+        shot_prefix + r"[ \t]*(?:\*\*|__|`)?[ \t]*$",
+        replace_shot,
+        text,
+    )
+
+    audio_prefix = (
+        r"(?im)^[ \t]*(?:#{1,6}[ \t]+)?(?:[-+*][ \t]+)?"
+        r"(?:\*\*|__|`)?[ \t]*audio[ \t]*"
+    )
+    text = re.sub(
+        audio_prefix
+        + r"(?:\*\*|__|`)?[ \t]*(?:[:：]|[-–—])[ \t]*"
+        r"(?:\*\*|__|`)?[ \t]*",
+        "Audio: ",
+        text,
+    )
+    return re.sub(
+        audio_prefix + r"(?:\*\*|__|`)?[ \t]*$",
+        "Audio:",
+        text,
+    )
+
+
 def sanitize_h3_prompt(
     prompt: str,
     image_count: int,
@@ -424,6 +472,8 @@ def sanitize_h3_prompt(
     if not mode:
         mode = "T2VA" if image_count == 0 and video_count == 0 and audio_count == 0 else "REF2VA"
     is_base_mode = mode in {"T2VA", "I2VA", "FL2VA", "L2VA"}
+    if is_base_mode:
+        text = _normalize_h3_base_headings(text)
     known_sections = (
         "subject_definitions",
         "summary",

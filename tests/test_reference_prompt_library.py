@@ -216,6 +216,8 @@ class ReferencePromptBuilderTests(unittest.TestCase):
         self.assertIn("direct H3 Base output contract for FL2VA", prompt)
         self.assertIn("Target duration: 5.00 seconds", prompt)
         self.assertIn("Multiple SHOT sections are allowed", prompt)
+        self.assertIn("using exactly SHOT 1:", prompt)
+        self.assertIn("exact plain ASCII header Audio:", prompt)
         self.assertNotIn("Use these exact ASCII field headers", prompt)
 
     def test_h3_analysis_images_do_not_change_t2va_output_contract(self):
