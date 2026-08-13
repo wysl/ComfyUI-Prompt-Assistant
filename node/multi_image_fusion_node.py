@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import hashlib
 import re
+import time
 from typing import Dict, List, Optional, Tuple
 
+import nodes
 import torch
 from comfy.model_management import InterruptProcessingException
 from comfy_api.latest import io
@@ -99,6 +101,17 @@ environment, and describe observable motion between keyframes."""
 
 
 STORYBOARD_OUTPUT_STYLE = "Storyboard Images"
+FUSION_MAX_RETRIES = 5
+FUSION_RETRY_DELAY_SECONDS = 10.0
+_MODEL_AUDIT_REJECTION_PATTERNS = (
+    r"\bnew_sensitive\b",
+    r"\bimage is sensitive\b",
+    r"\binput (?:is )?sensitive\b",
+    r"\bcontent(?:[_ -]?policy)?[_ -]?(?:violation|rejected|blocked|filtered)\b",
+    r"\b(?:safety|moderation)[_ -]?(?:filter|violation|rejected|blocked)\b",
+    r"\b(?:content|input) (?:was )?(?:rejected|blocked|filtered)\b",
+    r"\b1026\b",
+)
 
 
 class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
@@ -829,6 +842,55 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
 
         return "\n\n".join(scenes)
 
+    @staticmethod
+    def _is_model_audit_rejection(error_message: object) -> bool:
+        """Return True for provider safety/audit rejections that cannot succeed on retry."""
+        text = str(error_message or "").lower()
+        return any(
+            re.search(pattern, text, flags=re.IGNORECASE)
+            for pattern in _MODEL_AUDIT_REJECTION_PATTERNS
+        )
+
+    @staticmethod
+    def _wait_for_fusion_retry(delay_seconds: float) -> None:
+        """Wait in short intervals so a ComfyUI interrupt takes effect promptly."""
+        deadline = time.monotonic() + delay_seconds
+        while True:
+            nodes.before_node_execution()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            time.sleep(min(0.1, remaining))
+
+    @classmethod
+    def _run_fusion_with_retry(cls, request_id: str, run_once):
+        """Retry transient fusion failures, but never retry a model audit rejection."""
+        for retry_index in range(FUSION_MAX_RETRIES + 1):
+            result = run_once()
+            if result and result.get("success"):
+                return result
+
+            error_message = (
+                result.get("error", "Unknown error") if result else "No result returned"
+            )
+            if error_message == "任务被中断":
+                raise InterruptProcessingException()
+            if cls._is_model_audit_rejection(error_message):
+                return result
+            if retry_index >= FUSION_MAX_RETRIES:
+                return result
+
+            attempt = retry_index + 1
+            print(
+                f"✨ ⚠️ 节点-多图融合重试 | ID:{request_id} | "
+                f"第{attempt}/{FUSION_MAX_RETRIES}次 | {FUSION_RETRY_DELAY_SECONDS:g}s后重试 | "
+                f"原因:{str(error_message)[:160]}",
+                flush=True,
+            )
+            cls._wait_for_fusion_retry(FUSION_RETRY_DELAY_SECONDS)
+
+        raise RuntimeError("Unreachable fusion retry state")
+
     @classmethod
     def execute(
         cls,
@@ -1169,16 +1231,19 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 },
             )
 
-            result = cls._run_vision_task(
-                VisionService.analyze_images,
-                service_id,
-                images_data=images_data,
-                prompt_content=prompt_to_send,
-                request_id=request_id,
-                custom_provider=service_id,
-                custom_provider_config=provider_config,
-                task_type=TASK_MULTI_IMAGE_FUSION,
-                source=SOURCE_NODE,
+            result = cls._run_fusion_with_retry(
+                request_id,
+                lambda: cls._run_vision_task(
+                    VisionService.analyze_images,
+                    service_id,
+                    images_data=images_data,
+                    prompt_content=prompt_to_send,
+                    request_id=request_id,
+                    custom_provider=service_id,
+                    custom_provider_config=provider_config,
+                    task_type=TASK_MULTI_IMAGE_FUSION,
+                    source=SOURCE_NODE,
+                ),
             )
 
             if result and result.get("success"):
