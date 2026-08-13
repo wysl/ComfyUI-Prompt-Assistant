@@ -863,19 +863,35 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
             time.sleep(min(0.1, remaining))
 
     @classmethod
-    def _run_fusion_with_retry(cls, request_id: str, run_once):
-        """Retry transient fusion failures, but never retry a model audit rejection."""
+    def _run_fusion_with_retry(cls, request_id: str, run_once, validate_success=None):
+        """Retry request or output-validation failures, except model audit rejections."""
         for retry_index in range(FUSION_MAX_RETRIES + 1):
             result = run_once()
             if result and result.get("success"):
-                return result
+                if validate_success is None:
+                    return result
+                try:
+                    result = validate_success(result)
+                except InterruptProcessingException:
+                    raise
+                except Exception as error:
+                    response_text = str(result.get("data", {}) or "")
+                    result = {
+                        "success": False,
+                        "error": str(error),
+                        "audit_text": f"{error} {response_text}",
+                    }
+                else:
+                    if result and result.get("success"):
+                        return result
 
             error_message = (
                 result.get("error", "Unknown error") if result else "No result returned"
             )
             if error_message == "任务被中断":
                 raise InterruptProcessingException()
-            if cls._is_model_audit_rejection(error_message):
+            audit_text = result.get("audit_text", error_message) if result else error_message
+            if cls._is_model_audit_rejection(audit_text):
                 return result
             if retry_index >= FUSION_MAX_RETRIES:
                 return result
@@ -1231,22 +1247,7 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 },
             )
 
-            result = cls._run_fusion_with_retry(
-                request_id,
-                lambda: cls._run_vision_task(
-                    VisionService.analyze_images,
-                    service_id,
-                    images_data=images_data,
-                    prompt_content=prompt_to_send,
-                    request_id=request_id,
-                    custom_provider=service_id,
-                    custom_provider_config=provider_config,
-                    task_type=TASK_MULTI_IMAGE_FUSION,
-                    source=SOURCE_NODE,
-                ),
-            )
-
-            if result and result.get("success"):
+            def validate_fusion_result(result):
                 data = result.get("data", {}) or {}
                 fusion_prompt = (
                     data.get("description")
@@ -1267,9 +1268,32 @@ class MultiImageFusionNode(VLMNodeBase, io.ComfyNode):
                 else:
                     fusion_prompt = cls._sanitize_fusion_prompt(fusion_prompt)
                 if not fusion_prompt:
-                    error_msg = "API returned empty result"
-                    log_error(TASK_MULTI_IMAGE_FUSION, request_id, error_msg, source=SOURCE_NODE)
-                    raise RuntimeError(f"Fusion failed: {error_msg}")
+                    raise ValueError("API returned empty result")
+
+                validated = dict(result)
+                validated["data"] = dict(data)
+                validated["data"]["description"] = fusion_prompt
+                return validated
+
+            result = cls._run_fusion_with_retry(
+                request_id,
+                lambda: cls._run_vision_task(
+                    VisionService.analyze_images,
+                    service_id,
+                    images_data=images_data,
+                    prompt_content=prompt_to_send,
+                    request_id=request_id,
+                    custom_provider=service_id,
+                    custom_provider_config=provider_config,
+                    task_type=TASK_MULTI_IMAGE_FUSION,
+                    source=SOURCE_NODE,
+                ),
+                validate_success=validate_fusion_result,
+            )
+
+            if result and result.get("success"):
+                data = result.get("data", {}) or {}
+                fusion_prompt = data.get("description", "").strip()
 
                 return io.NodeOutput(fusion_prompt, reference_manifest, preview_tensor)
 

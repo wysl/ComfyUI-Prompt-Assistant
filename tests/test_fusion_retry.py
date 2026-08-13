@@ -106,6 +106,53 @@ class FusionRetryTests(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(self.waits, [10.0, 10.0])
 
+    def test_successful_response_with_invalid_h3_labels_is_retried(self):
+        responses = iter((
+            {"success": True, "data": {"description": "only <Picture 3>"}},
+            {"success": True, "data": {"description": "all labels present"}},
+        ))
+
+        def validate(result):
+            description = result["data"]["description"]
+            if description == "only <Picture 3>":
+                raise ValueError(
+                    "Invalid MiniMax H3 reference labels: "
+                    "missing <Picture 1>, <Picture 2>"
+                )
+            return result
+
+        result = self.node._run_fusion_with_retry(
+            "fusion_test",
+            lambda: next(responses),
+            validate_success=validate,
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(self.waits, [10.0])
+
+    def test_successful_response_containing_audit_refusal_is_not_retried(self):
+        calls = []
+
+        def run_once():
+            calls.append(1)
+            return {
+                "success": True,
+                "data": {"description": "input new_sensitive (1026)"},
+            }
+
+        def validate(_result):
+            raise ValueError("MiniMax H3 output is missing required sections")
+
+        result = self.node._run_fusion_with_retry(
+            "fusion_test",
+            run_once,
+            validate_success=validate,
+        )
+
+        self.assertFalse(result["success"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.waits, [])
+
     def test_transient_error_is_limited_to_five_retries(self):
         calls = []
 
