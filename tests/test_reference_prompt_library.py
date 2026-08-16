@@ -81,10 +81,32 @@ class ReferencePromptLibraryTests(unittest.TestCase):
 
         root_listing = reference_prompt_library.list_reference_directory("", root=self.root)
         self.assertEqual([item["path"] for item in root_listing["directories"]], ["A", "B"])
+        self.assertEqual(
+            [item["file_count"] for item in root_listing["directories"]], [2, 0]
+        )
 
         listing = reference_prompt_library.list_reference_directory("A", root=self.root)
         self.assertEqual([item["path"] for item in listing["directories"]], ["A/nested"])
         self.assertEqual([item["path"] for item in listing["files"]], ["A/one.txt"])
+
+    def test_recursively_lists_folder_files_in_stable_order(self):
+        (self.root / "A" / "nested").mkdir(parents=True)
+        (self.root / "A" / ".hidden").mkdir()
+        (self.root / "A" / "z.txt").write_text("z", encoding="utf-8")
+        (self.root / "A" / "nested" / "a.TXT").write_text("a", encoding="utf-8")
+        (self.root / "A" / "nested" / "skip.md").write_text("skip", encoding="utf-8")
+        (self.root / "A" / ".hidden" / "secret.txt").write_text("secret", encoding="utf-8")
+
+        listing = reference_prompt_library.list_reference_files("A", root=self.root)
+
+        self.assertEqual(
+            [item["path"] for item in listing["files"]],
+            ["A/nested/a.TXT", "A/z.txt"],
+        )
+
+    def test_recursive_listing_rejects_paths_outside_library(self):
+        with self.assertRaises(reference_prompt_library.ReferencePromptError):
+            reference_prompt_library.list_reference_files("../outside", root=self.root)
 
     def test_rejects_traversal_and_absolute_paths(self):
         with self.assertRaises(reference_prompt_library.ReferencePromptError):
@@ -334,6 +356,15 @@ class ReferencePromptBuilderTests(unittest.TestCase):
 
 
 class ReferencePromptNodeContractTests(unittest.TestCase):
+    def test_reference_library_frontend_supports_folder_select_and_clear_all(self):
+        source = (
+            PROJECT_ROOT / "js" / "node" / "referencePromptLibrary.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn('reference_prompts/files', source)
+        self.assertIn('toggleDirectory', source)
+        self.assertIn('clearSelection', source)
+        self.assertIn('pa-rpl-folder-select', source)
+
     def test_reference_content_uses_dependency_only_connection_type(self):
         library_source = (
             PROJECT_ROOT / "node" / "reference_prompt_library_node.py"

@@ -37,6 +37,7 @@ function makeIconButton(icon, title, onClick) {
     button.type = "button";
     button.className = "pa-rpl-icon-button";
     button.title = title;
+    button.setAttribute("aria-label", title);
     const iconElement = document.createElement("i");
     iconElement.className = `pi ${icon}`;
     button.appendChild(iconElement);
@@ -47,6 +48,7 @@ function makeIconButton(icon, title, onClick) {
 
 function createBrowserModal(node, selectedWidget) {
     const selectedPaths = parseSelection(selectedWidget.value);
+    const directoryFileCache = new Map();
     let currentPath = "";
     let currentData = { directories: [], files: [] };
     let selectedView = false;
@@ -69,8 +71,10 @@ function createBrowserModal(node, selectedWidget) {
     const headerActions = document.createElement("div");
     headerActions.className = "pa-rpl-header-actions";
     const refreshButton = makeIconButton("pi-refresh", "刷新当前目录", () => loadDirectory(currentPath));
+    const clearButton = makeIconButton("pi-trash", "清空全部已选提示词", clearSelection);
+    clearButton.classList.add("pa-rpl-clear-button");
     const closeButton = makeIconButton("pi-times", "关闭", close);
-    headerActions.append(refreshButton, closeButton);
+    headerActions.append(refreshButton, clearButton, closeButton);
     header.append(title, headerActions);
 
     const toolbar = document.createElement("div");
@@ -211,18 +215,103 @@ function createBrowserModal(node, selectedWidget) {
         render();
     }
 
+    function clearSelection() {
+        if (!selectedPaths.length) return;
+        selectedPaths.splice(0, selectedPaths.length);
+        render();
+    }
+
+    async function getDirectoryFiles(path) {
+        if (directoryFileCache.has(path)) return directoryFileCache.get(path);
+        const url = new URL(APIService.getApiUrl("reference_prompts/files"));
+        url.searchParams.set("path", path);
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        const paths = (data.files || []).map(file => file.path);
+        directoryFileCache.set(path, paths);
+        return paths;
+    }
+
+    function getDirectorySelectionState(directory) {
+        const cachedPaths = directoryFileCache.get(directory.path);
+        const prefix = `${directory.path}/`;
+        const fileCount = cachedPaths?.length ?? Number(directory.file_count || 0);
+        const selectedCount = cachedPaths
+            ? cachedPaths.filter(path => selectedPaths.includes(path)).length
+            : selectedPaths.filter(path => path.startsWith(prefix)).length;
+        if (!fileCount || !selectedCount) return "none";
+        return selectedCount >= fileCount ? "selected" : "partial";
+    }
+
+    async function toggleDirectory(directory, button) {
+        if (!Number(directory.file_count || 0)) return;
+        button.disabled = true;
+        button.classList.add("loading");
+        try {
+            const paths = await getDirectoryFiles(directory.path);
+            const allSelected = paths.length > 0 && paths.every(path => selectedPaths.includes(path));
+            if (allSelected) {
+                const folderPaths = new Set(paths);
+                for (let index = selectedPaths.length - 1; index >= 0; index -= 1) {
+                    if (folderPaths.has(selectedPaths[index])) selectedPaths.splice(index, 1);
+                }
+            } else {
+                const selected = new Set(selectedPaths);
+                for (const path of paths) {
+                    if (!selected.has(path)) {
+                        selectedPaths.push(path);
+                        selected.add(path);
+                    }
+                }
+            }
+            render();
+        } catch (error) {
+            logger.error(`选择参考提示词目录失败: ${error.message}`);
+            showError(error.message || "目录选择失败");
+        } finally {
+            button.disabled = false;
+            button.classList.remove("loading");
+        }
+    }
+
     function createDirectoryRow(directory) {
-        const row = document.createElement("button");
-        row.type = "button";
+        const row = document.createElement("div");
         row.className = "pa-rpl-row pa-rpl-directory";
+        const selectionState = getDirectorySelectionState(directory);
+        if (selectionState !== "none") row.classList.add(selectionState);
+
+        const selectButton = document.createElement("button");
+        selectButton.type = "button";
+        selectButton.className = "pa-rpl-folder-select";
+        selectButton.disabled = !Number(directory.file_count || 0);
+        const selectTitle = selectionState === "selected"
+            ? `取消选择“${directory.name}”下全部文件`
+            : `选择“${directory.name}”下全部 ${directory.file_count || 0} 个文件`;
+        selectButton.title = selectTitle;
+        selectButton.setAttribute("aria-label", selectTitle);
+        const checkbox = document.createElement("span");
+        checkbox.className = "pa-rpl-checkbox";
+        selectButton.appendChild(checkbox);
+        selectButton.addEventListener("click", () => toggleDirectory(directory, selectButton));
+
+        const openButton = document.createElement("button");
+        openButton.type = "button";
+        openButton.className = "pa-rpl-directory-open";
         const icon = document.createElement("i");
         icon.className = "pi pi-folder";
         const label = document.createElement("span");
         label.textContent = directory.name;
+        const count = document.createElement("span");
+        count.className = "pa-rpl-directory-count";
+        count.textContent = `${directory.file_count || 0}`;
         const arrow = document.createElement("i");
         arrow.className = "pi pi-chevron-right pa-rpl-row-arrow";
-        row.append(icon, label, arrow);
-        row.addEventListener("click", () => loadDirectory(directory.path));
+        openButton.append(icon, label, count, arrow);
+        openButton.addEventListener("click", () => loadDirectory(directory.path));
+        row.append(selectButton, openButton);
         return row;
     }
 
@@ -307,6 +396,7 @@ function createBrowserModal(node, selectedWidget) {
     }
 
     function render() {
+        clearButton.disabled = selectedPaths.length === 0;
         selectedToggle.textContent = selectedView
             ? "返回目录"
             : `已选 ${selectedPaths.length} 项`;

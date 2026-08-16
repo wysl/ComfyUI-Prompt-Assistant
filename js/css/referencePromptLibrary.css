@@ -74,6 +74,17 @@
     background: rgba(255, 255, 255, 0.08);
 }
 
+.pa-rpl-icon-button:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.pa-rpl-clear-button:not(:disabled):hover {
+    border-color: #b84a4a;
+    color: #ff9a9a;
+    background: rgba(184, 74, 74, 0.14);
+}
+
 .pa-rpl-breadcrumbs {
     min-width: 0;
     flex: 1;
@@ -133,6 +144,64 @@
     cursor: pointer;
 }
 
+.pa-rpl-directory {
+    gap: 0;
+    padding: 0;
+    cursor: default;
+}
+
+.pa-rpl-folder-select,
+.pa-rpl-directory-open {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+}
+
+.pa-rpl-folder-select {
+    width: 42px;
+    justify-content: center;
+    flex: 0 0 42px;
+    padding: 0;
+}
+
+.pa-rpl-folder-select:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.pa-rpl-folder-select.loading {
+    opacity: 0.55;
+}
+
+.pa-rpl-directory-open {
+    min-width: 0;
+    flex: 1;
+    gap: 10px;
+    padding: 7px 10px 7px 0;
+    text-align: left;
+}
+
+.pa-rpl-directory-open > span:not(.pa-rpl-directory-count) {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pa-rpl-directory-count {
+    min-width: 24px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.62);
+    background: rgba(255, 255, 255, 0.08);
+    text-align: center;
+}
+
 .pa-rpl-row:hover,
 .pa-rpl-selected-row:hover {
     background: rgba(255, 255, 255, 0.07);
@@ -159,12 +228,14 @@
     border-radius: 4px;
 }
 
-.pa-rpl-file.selected .pa-rpl-checkbox {
+.pa-rpl-file.selected .pa-rpl-checkbox,
+.pa-rpl-directory.selected .pa-rpl-checkbox {
     border-color: #3887d6;
     background: #3887d6;
 }
 
-.pa-rpl-file.selected .pa-rpl-checkbox::after {
+.pa-rpl-file.selected .pa-rpl-checkbox::after,
+.pa-rpl-directory.selected .pa-rpl-checkbox::after {
     content: "";
     width: 5px;
     height: 9px;
@@ -174,6 +245,21 @@
     border: solid #fff;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
+}
+
+.pa-rpl-directory.partial .pa-rpl-checkbox {
+    border-color: #3887d6;
+    background: #3887d6;
+}
+
+.pa-rpl-directory.partial .pa-rpl-checkbox::after {
+    content: "";
+    width: 8px;
+    height: 2px;
+    position: absolute;
+    left: 3px;
+    top: 6px;
+    background: #fff;
 }
 
 .pa-rpl-selected-row {

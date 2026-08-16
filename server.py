@@ -26,6 +26,7 @@ from .utils.video import extract_frame_by_index, get_video_frame_info
 from .utils.reference_prompt_library import (
     ReferencePromptError,
     list_reference_directory,
+    list_reference_files,
 )
 
 # 动态获取插件目录名作为路由前缀的基础
@@ -90,6 +91,22 @@ async def list_reference_prompts(request):
         return web.json_response({"success": False, "error": str(error)}, status=400)
     except Exception as error:
         print(f"{ERROR_PREFIX} 读取多媒体参考提示词目录失败 | 错误:{error}")
+        return web.json_response({"success": False, "error": str(error)}, status=500)
+
+
+@PromptServer.instance.routes.get(f'{API_PREFIX}/reference_prompts/files')
+async def list_reference_prompt_files(request):
+    """递归列出目录下全部 TXT 文件，供前端整目录选择。"""
+    try:
+        relative_path = request.query.get('path', '')
+        return web.json_response({
+            "success": True,
+            **list_reference_files(relative_path),
+        })
+    except ReferencePromptError as error:
+        return web.json_response({"success": False, "error": str(error)}, status=400)
+    except Exception as error:
+        print(f"{ERROR_PREFIX} 递归读取多媒体参考提示词失败 | 错误:{error}")
         return web.json_response({"success": False, "error": str(error)}, status=500)
 
 # ---流式进度设置API---

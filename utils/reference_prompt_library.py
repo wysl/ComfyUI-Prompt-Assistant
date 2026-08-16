@@ -59,6 +59,51 @@ def resolve_library_path(
     return candidate
 
 
+def _reference_file_item(path: Path, library_root: Path) -> dict:
+    stat = path.stat()
+    return {
+        "name": path.name,
+        "path": path.relative_to(library_root).as_posix(),
+        "size": stat.st_size,
+        "modified": stat.st_mtime_ns,
+    }
+
+
+def list_reference_files(relative_dir: str = "", *, root: Optional[Path] = None) -> dict:
+    """List every visible TXT file below a library directory in stable order."""
+    library_root = (root or get_reference_prompt_root()).resolve()
+    library_root.mkdir(parents=True, exist_ok=True)
+    directory = resolve_library_path(
+        relative_dir,
+        root=library_root,
+        expect_directory=True,
+    )
+
+    files = []
+    seen = set()
+    for child in directory.rglob("*"):
+        try:
+            resolved = child.resolve()
+        except OSError:
+            continue
+        if not _is_within_root(resolved, library_root) or not resolved.is_file():
+            continue
+        relative = resolved.relative_to(library_root)
+        if any(part.startswith(".") for part in relative.parts):
+            continue
+        if resolved.suffix.lower() != ".txt" or resolved in seen:
+            continue
+        seen.add(resolved)
+        files.append(_reference_file_item(resolved, library_root))
+
+    files.sort(key=lambda item: item["path"].casefold())
+    current = directory.relative_to(library_root).as_posix()
+    return {
+        "path": "" if current == "." else current,
+        "files": files,
+    }
+
+
 def list_reference_directory(relative_dir: str = "", *, root: Optional[Path] = None) -> dict:
     library_root = (root or get_reference_prompt_root()).resolve()
     library_root.mkdir(parents=True, exist_ok=True)
@@ -82,17 +127,16 @@ def list_reference_directory(relative_dir: str = "", *, root: Optional[Path] = N
 
         relative = resolved.relative_to(library_root).as_posix()
         if resolved.is_dir():
-            directories.append({"name": child.name, "path": relative})
-        elif resolved.is_file() and resolved.suffix.lower() == ".txt":
-            stat = resolved.stat()
-            files.append(
+            recursive_files = list_reference_files(relative, root=library_root)["files"]
+            directories.append(
                 {
                     "name": child.name,
                     "path": relative,
-                    "size": stat.st_size,
-                    "modified": stat.st_mtime_ns,
+                    "file_count": len(recursive_files),
                 }
             )
+        elif resolved.is_file() and resolved.suffix.lower() == ".txt":
+            files.append(_reference_file_item(resolved, library_root))
 
     key = lambda item: item["name"].casefold()
     directories.sort(key=key)
